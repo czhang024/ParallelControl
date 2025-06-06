@@ -1,0 +1,395 @@
+nohup: ignoring input
+2025-06-06 17:09:57.759214: I tensorflow/core/platform/cpu_feature_guard.cc:193] This TensorFlow binary is optimized with oneAPI Deep Neural Network Library (oneDNN) to use the following CPU instructions in performance-critical operations:  AVX2 AVX512F AVX512_VNNI FMA
+To enable them in other operations, rebuild TensorFlow with the appropriate compiler flags.
+2025-06-06 17:09:57.879688: I tensorflow/core/util/port.cc:104] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+2025-06-06 17:09:58.364974: W tensorflow/compiler/xla/stream_executor/platform/default/dso_loader.cc:64] Could not load dynamic library 'libnvinfer.so.7'; dlerror: libnvinfer.so.7: cannot open shared object file: No such file or directory
+2025-06-06 17:09:58.365038: W tensorflow/compiler/xla/stream_executor/platform/default/dso_loader.cc:64] Could not load dynamic library 'libnvinfer_plugin.so.7'; dlerror: libnvinfer_plugin.so.7: cannot open shared object file: No such file or directory
+2025-06-06 17:09:58.365045: W tensorflow/compiler/tf2tensorrt/utils/py_utils.cc:38] TF-TRT Warning: Cannot dlopen some TensorRT libraries. If you would like to use Nvidia GPU with TensorRT, please make sure the missing libraries mentioned above are installed properly.
+Using Control Method
+blocks.0.controller.down_proj.weight torch.Size([16, 768])
+blocks.0.controller.down_proj.bias torch.Size([16])
+blocks.0.controller.up_proj.weight torch.Size([768, 16])
+blocks.0.controller.up_proj.bias torch.Size([768])
+blocks.1.controller.down_proj.weight torch.Size([16, 768])
+blocks.1.controller.down_proj.bias torch.Size([16])
+blocks.1.controller.up_proj.weight torch.Size([768, 16])
+blocks.1.controller.up_proj.bias torch.Size([768])
+blocks.2.controller.down_proj.weight torch.Size([16, 768])
+blocks.2.controller.down_proj.bias torch.Size([16])
+blocks.2.controller.up_proj.weight torch.Size([768, 16])
+blocks.2.controller.up_proj.bias torch.Size([768])
+blocks.3.controller.down_proj.weight torch.Size([16, 768])
+blocks.3.controller.down_proj.bias torch.Size([16])
+blocks.3.controller.up_proj.weight torch.Size([768, 16])
+blocks.3.controller.up_proj.bias torch.Size([768])
+blocks.4.controller.down_proj.weight torch.Size([16, 768])
+blocks.4.controller.down_proj.bias torch.Size([16])
+blocks.4.controller.up_proj.weight torch.Size([768, 16])
+blocks.4.controller.up_proj.bias torch.Size([768])
+blocks.5.controller.down_proj.weight torch.Size([16, 768])
+blocks.5.controller.down_proj.bias torch.Size([16])
+blocks.5.controller.up_proj.weight torch.Size([768, 16])
+blocks.5.controller.up_proj.bias torch.Size([768])
+blocks.6.controller.down_proj.weight torch.Size([16, 768])
+blocks.6.controller.down_proj.bias torch.Size([16])
+blocks.6.controller.up_proj.weight torch.Size([768, 16])
+blocks.6.controller.up_proj.bias torch.Size([768])
+blocks.7.controller.down_proj.weight torch.Size([16, 768])
+blocks.7.controller.down_proj.bias torch.Size([16])
+blocks.7.controller.up_proj.weight torch.Size([768, 16])
+blocks.7.controller.up_proj.bias torch.Size([768])
+blocks.8.controller.down_proj.weight torch.Size([16, 768])
+blocks.8.controller.down_proj.bias torch.Size([16])
+blocks.8.controller.up_proj.weight torch.Size([768, 16])
+blocks.8.controller.up_proj.bias torch.Size([768])
+blocks.9.controller.down_proj.weight torch.Size([16, 768])
+blocks.9.controller.down_proj.bias torch.Size([16])
+blocks.9.controller.up_proj.weight torch.Size([768, 16])
+blocks.9.controller.up_proj.bias torch.Size([768])
+blocks.10.controller.down_proj.weight torch.Size([16, 768])
+blocks.10.controller.down_proj.bias torch.Size([16])
+blocks.10.controller.up_proj.weight torch.Size([768, 16])
+blocks.10.controller.up_proj.bias torch.Size([768])
+blocks.11.controller.down_proj.weight torch.Size([16, 768])
+blocks.11.controller.down_proj.bias torch.Size([16])
+blocks.11.controller.up_proj.weight torch.Size([768, 16])
+blocks.11.controller.up_proj.bias torch.Size([768])
+head.weight torch.Size([100, 768])
+head.bias torch.Size([100])
+number of params (M): 0.38
+actual lr: 5.00e-03
+SGD (
+Parameter Group 0
+    dampening: 0
+    differentiable: False
+    foreach: None
+    lr: 0.005
+    maximize: False
+    momentum: 0.9
+    nesterov: False
+    weight_decay: 0.0
+)
+criterion = CrossEntropyLoss()
+Start training for 50 epochs
+log_dir: ./results
+/home/chi/anaconda3/envs/cuda117/lib/python3.8/site-packages/torchvision/io/image.py:13: UserWarning: Failed to load image Python extension: '/home/chi/anaconda3/envs/cuda117/lib/python3.8/site-packages/torchvision/image.so: undefined symbol: _ZN3c104cuda9SetDeviceEi'If you don't plan on using image functionality from `torchvision.io`, you can ignore this warning. Otherwise, there might be something wrong with your environment. Did you have `libjpeg` or `libpng` installed before building `torchvision` from source?
+  warn(
+Epoch: [0]  [  0/390]  eta: 0:20:52  lr: 0.005000  loss: 4.6045 (4.6045)  time: 3.2124  data: 1.1357  max mem: 11073
+Epoch: [0]  [ 20/390]  eta: 0:04:12  lr: 0.005000  loss: 4.5931 (4.5940)  time: 0.5568  data: 0.0003  max mem: 11083
+Epoch: [0]  [ 40/390]  eta: 0:03:38  lr: 0.005000  loss: 4.5663 (4.5812)  time: 0.5606  data: 0.0003  max mem: 11083
+Epoch: [0]  [ 60/390]  eta: 0:03:18  lr: 0.005000  loss: 4.5317 (4.5658)  time: 0.5600  data: 0.0003  max mem: 11083
+Epoch: [0]  [ 80/390]  eta: 0:03:03  lr: 0.005000  loss: 4.4967 (4.5490)  time: 0.5612  data: 0.0003  max mem: 11083
+Epoch: [0]  [100/390]  eta: 0:02:50  lr: 0.005000  loss: 4.4629 (4.5315)  time: 0.5652  data: 0.0011  max mem: 11083
+Epoch: [0]  [120/390]  eta: 0:02:37  lr: 0.005000  loss: 4.4271 (4.5140)  time: 0.5655  data: 0.0004  max mem: 11083
+Epoch: [0]  [140/390]  eta: 0:02:25  lr: 0.005000  loss: 4.3907 (4.4966)  time: 0.5648  data: 0.0003  max mem: 11083
+Epoch: [0]  [160/390]  eta: 0:02:13  lr: 0.005000  loss: 4.3507 (4.4789)  time: 0.5649  data: 0.0002  max mem: 11083
+Epoch: [0]  [180/390]  eta: 0:02:01  lr: 0.005000  loss: 4.3116 (4.4604)  time: 0.5685  data: 0.0006  max mem: 11083
+Epoch: [0]  [200/390]  eta: 0:01:49  lr: 0.005000  loss: 4.2596 (4.4406)  time: 0.5666  data: 0.0012  max mem: 11083
+Epoch: [0]  [220/390]  eta: 0:01:37  lr: 0.005000  loss: 4.1907 (4.4185)  time: 0.5654  data: 0.0003  max mem: 11083
+Epoch: [0]  [240/390]  eta: 0:01:26  lr: 0.005000  loss: 4.1294 (4.3945)  time: 0.5657  data: 0.0003  max mem: 11083
+Epoch: [0]  [260/390]  eta: 0:01:14  lr: 0.005000  loss: 4.0587 (4.3695)  time: 0.5667  data: 0.0004  max mem: 11083
+Epoch: [0]  [280/390]  eta: 0:01:03  lr: 0.005000  loss: 3.9840 (4.3424)  time: 0.5660  data: 0.0003  max mem: 11083
+Epoch: [0]  [300/390]  eta: 0:00:51  lr: 0.005000  loss: 3.8908 (4.3130)  time: 0.5661  data: 0.0003  max mem: 11083
+Epoch: [0]  [320/390]  eta: 0:00:40  lr: 0.005000  loss: 3.8093 (4.2821)  time: 0.5674  data: 0.0004  max mem: 11083
+Epoch: [0]  [340/390]  eta: 0:00:28  lr: 0.005000  loss: 3.7165 (4.2497)  time: 0.5662  data: 0.0003  max mem: 11083
+Epoch: [0]  [360/390]  eta: 0:00:17  lr: 0.005000  loss: 3.6550 (4.2169)  time: 0.5663  data: 0.0003  max mem: 11083
+Epoch: [0]  [380/390]  eta: 0:00:05  lr: 0.005000  loss: 3.5563 (4.1820)  time: 0.5662  data: 0.0002  max mem: 11083
+Epoch: [0]  [389/390]  eta: 0:00:00  lr: 0.005000  loss: 3.5066 (4.1658)  time: 0.5669  data: 0.0001  max mem: 11083
+Epoch: [0] Total time: 0:03:43 (0.5719 s / it)
+Averaged stats: lr: 0.005000  loss: 3.5066 (4.1658)
+Test:  [ 0/79]  eta: 0:01:17  loss: 3.2453 (3.2453)  acc1: 74.2188 (74.2188)  acc5: 96.0938 (96.0938)  time: 0.9783  data: 0.6991  max mem: 11083
+Test:  [10/79]  eta: 0:00:24  loss: 3.3018 (3.3033)  acc1: 72.6562 (72.1591)  acc5: 92.9688 (93.2528)  time: 0.3614  data: 0.0804  max mem: 11083
+Test:  [20/79]  eta: 0:00:19  loss: 3.3018 (3.3047)  acc1: 72.6562 (72.7307)  acc5: 92.9688 (93.2292)  time: 0.2949  data: 0.0134  max mem: 11083
+Test:  [30/79]  eta: 0:00:15  loss: 3.3056 (3.3047)  acc1: 73.4375 (73.0343)  acc5: 92.9688 (93.3468)  time: 0.2869  data: 0.0054  max mem: 11083
+Test:  [40/79]  eta: 0:00:11  loss: 3.2978 (3.3024)  acc1: 73.4375 (73.3422)  acc5: 92.9688 (93.4261)  time: 0.2852  data: 0.0037  max mem: 11083
+Test:  [50/79]  eta: 0:00:08  loss: 3.2978 (3.3025)  acc1: 73.4375 (73.2230)  acc5: 94.5312 (93.7500)  time: 0.2890  data: 0.0078  max mem: 11083
+Test:  [60/79]  eta: 0:00:05  loss: 3.3007 (3.3023)  acc1: 71.0938 (73.1942)  acc5: 94.5312 (93.7500)  time: 0.2906  data: 0.0097  max mem: 11083
+Test:  [70/79]  eta: 0:00:02  loss: 3.2948 (3.3019)  acc1: 72.6562 (73.2174)  acc5: 93.7500 (93.7170)  time: 0.2939  data: 0.0131  max mem: 11083
+Test:  [78/79]  eta: 0:00:00  loss: 3.2934 (3.3012)  acc1: 73.4375 (73.1500)  acc5: 93.7500 (93.7500)  time: 0.2884  data: 0.0146  max mem: 11083
+Test: Total time: 0:00:23 (0.2997 s / it)
+* Acc@1 73.150 Acc@5 93.750 loss 3.301
+Accuracy of the network on the 10000 test images: 73.2%
+Max accuracy: 73.15%
+log_dir: ./results
+Epoch: [1]  [  0/390]  eta: 0:08:13  lr: 0.004750  loss: 3.3795 (3.3795)  time: 1.2657  data: 0.7020  max mem: 11083
+Epoch: [1]  [ 20/390]  eta: 0:03:41  lr: 0.004750  loss: 3.3774 (3.3827)  time: 0.5661  data: 0.0003  max mem: 11083
+Epoch: [1]  [ 40/390]  eta: 0:03:24  lr: 0.004750  loss: 3.2934 (3.3423)  time: 0.5669  data: 0.0005  max mem: 11083
+Epoch: [1]  [ 60/390]  eta: 0:03:10  lr: 0.004750  loss: 3.1804 (3.2957)  time: 0.5662  data: 0.0003  max mem: 11083
+Epoch: [1]  [ 80/390]  eta: 0:02:58  lr: 0.004750  loss: 3.0946 (3.2458)  time: 0.5661  data: 0.0002  max mem: 11083
+Epoch: [1]  [100/390]  eta: 0:02:46  lr: 0.004750  loss: 2.9991 (3.1974)  time: 0.5670  data: 0.0003  max mem: 11083
+Epoch: [1]  [120/390]  eta: 0:02:34  lr: 0.004750  loss: 2.9049 (3.1509)  time: 0.5667  data: 0.0002  max mem: 11083
+Epoch: [1]  [140/390]  eta: 0:02:22  lr: 0.004750  loss: 2.7762 (3.1013)  time: 0.5664  data: 0.0003  max mem: 11083
+Epoch: [1]  [160/390]  eta: 0:02:11  lr: 0.004750  loss: 2.7050 (3.0545)  time: 0.5663  data: 0.0002  max mem: 11083
+Epoch: [1]  [180/390]  eta: 0:01:59  lr: 0.004750  loss: 2.6117 (3.0058)  time: 0.5674  data: 0.0003  max mem: 11083
+Epoch: [1]  [200/390]  eta: 0:01:48  lr: 0.004750  loss: 2.5457 (2.9604)  time: 0.5667  data: 0.0002  max mem: 11083
+Epoch: [1]  [220/390]  eta: 0:01:36  lr: 0.004750  loss: 2.4063 (2.9121)  time: 0.5663  data: 0.0002  max mem: 11083
+Epoch: [1]  [240/390]  eta: 0:01:25  lr: 0.004750  loss: 2.3936 (2.8694)  time: 0.5661  data: 0.0002  max mem: 11083
+Epoch: [1]  [260/390]  eta: 0:01:14  lr: 0.004750  loss: 2.3038 (2.8283)  time: 0.5681  data: 0.0004  max mem: 11083
+Epoch: [1]  [280/390]  eta: 0:01:02  lr: 0.004750  loss: 2.2673 (2.7879)  time: 0.5662  data: 0.0002  max mem: 11083
+Epoch: [1]  [300/390]  eta: 0:00:51  lr: 0.004750  loss: 2.1681 (2.7462)  time: 0.5666  data: 0.0003  max mem: 11083
+Epoch: [1]  [320/390]  eta: 0:00:39  lr: 0.004750  loss: 2.0813 (2.7060)  time: 0.5662  data: 0.0003  max mem: 11083
+Epoch: [1]  [340/390]  eta: 0:00:28  lr: 0.004750  loss: 2.0118 (2.6676)  time: 0.5676  data: 0.0003  max mem: 11083
+Epoch: [1]  [360/390]  eta: 0:00:17  lr: 0.004750  loss: 2.0005 (2.6307)  time: 0.5662  data: 0.0003  max mem: 11083
+Epoch: [1]  [380/390]  eta: 0:00:05  lr: 0.004750  loss: 1.9300 (2.5954)  time: 0.5657  data: 0.0001  max mem: 11083
+Epoch: [1]  [389/390]  eta: 0:00:00  lr: 0.004750  loss: 1.9289 (2.5796)  time: 0.5654  data: 0.0001  max mem: 11083
+Epoch: [1] Total time: 0:03:41 (0.5686 s / it)
+Averaged stats: lr: 0.004750  loss: 1.9289 (2.5796)
+Test:  [ 0/79]  eta: 0:01:16  loss: 1.4715 (1.4715)  acc1: 84.3750 (84.3750)  acc5: 96.0938 (96.0938)  time: 0.9624  data: 0.6831  max mem: 11083
+Test:  [10/79]  eta: 0:00:24  loss: 1.6099 (1.5739)  acc1: 82.0312 (80.9659)  acc5: 96.0938 (96.0227)  time: 0.3561  data: 0.0745  max mem: 11083
+Test:  [20/79]  eta: 0:00:18  loss: 1.5845 (1.5681)  acc1: 82.0312 (81.6592)  acc5: 96.0938 (96.0193)  time: 0.2891  data: 0.0069  max mem: 11083
+Test:  [30/79]  eta: 0:00:15  loss: 1.5581 (1.5681)  acc1: 80.4688 (80.9980)  acc5: 96.0938 (96.2702)  time: 0.2896  data: 0.0078  max mem: 11083
+Test:  [40/79]  eta: 0:00:12  loss: 1.5581 (1.5693)  acc1: 79.6875 (81.2309)  acc5: 96.8750 (96.3034)  time: 0.2971  data: 0.0162  max mem: 11083
+Test:  [50/79]  eta: 0:00:08  loss: 1.5607 (1.5668)  acc1: 82.0312 (81.4032)  acc5: 97.6562 (96.5380)  time: 0.2940  data: 0.0124  max mem: 11083
+Test:  [60/79]  eta: 0:00:05  loss: 1.5693 (1.5652)  acc1: 82.0312 (81.4677)  acc5: 97.6562 (96.6573)  time: 0.2906  data: 0.0088  max mem: 11083
+Test:  [70/79]  eta: 0:00:02  loss: 1.5633 (1.5631)  acc1: 82.0312 (81.5141)  acc5: 97.6562 (96.7540)  time: 0.2932  data: 0.0122  max mem: 11083
+Test:  [78/79]  eta: 0:00:00  loss: 1.5505 (1.5630)  acc1: 82.0312 (81.6000)  acc5: 96.8750 (96.7300)  time: 0.2822  data: 0.0135  max mem: 11083
+Test: Total time: 0:00:23 (0.2993 s / it)
+* Acc@1 81.600 Acc@5 96.730 loss 1.563
+Accuracy of the network on the 10000 test images: 81.6%
+Max accuracy: 81.60%
+log_dir: ./results
+Epoch: [2]  [  0/390]  eta: 0:07:46  lr: 0.004513  loss: 1.7695 (1.7695)  time: 1.1970  data: 0.6365  max mem: 11083
+Epoch: [2]  [ 20/390]  eta: 0:03:41  lr: 0.004513  loss: 1.8410 (1.8395)  time: 0.5695  data: 0.0043  max mem: 11083
+Epoch: [2]  [ 40/390]  eta: 0:03:24  lr: 0.004513  loss: 1.8119 (1.8220)  time: 0.5656  data: 0.0002  max mem: 11083
+Epoch: [2]  [ 60/390]  eta: 0:03:10  lr: 0.004513  loss: 1.7555 (1.8044)  time: 0.5668  data: 0.0002  max mem: 11083
+Epoch: [2]  [ 80/390]  eta: 0:02:58  lr: 0.004513  loss: 1.7046 (1.7832)  time: 0.5657  data: 0.0001  max mem: 11083
+Epoch: [2]  [100/390]  eta: 0:02:46  lr: 0.004513  loss: 1.6768 (1.7633)  time: 0.5655  data: 0.0001  max mem: 11083
+Epoch: [2]  [120/390]  eta: 0:02:34  lr: 0.004513  loss: 1.6749 (1.7485)  time: 0.5662  data: 0.0001  max mem: 11083
+Epoch: [2]  [140/390]  eta: 0:02:22  lr: 0.004513  loss: 1.6126 (1.7301)  time: 0.5661  data: 0.0001  max mem: 11083
+Epoch: [2]  [160/390]  eta: 0:02:11  lr: 0.004513  loss: 1.6048 (1.7148)  time: 0.5657  data: 0.0001  max mem: 11083
+Epoch: [2]  [180/390]  eta: 0:01:59  lr: 0.004513  loss: 1.5467 (1.6960)  time: 0.5656  data: 0.0001  max mem: 11083
+Epoch: [2]  [200/390]  eta: 0:01:48  lr: 0.004513  loss: 1.5256 (1.6811)  time: 0.5664  data: 0.0001  max mem: 11083
+Epoch: [2]  [220/390]  eta: 0:01:36  lr: 0.004513  loss: 1.4954 (1.6656)  time: 0.5654  data: 0.0001  max mem: 11083
+Epoch: [2]  [240/390]  eta: 0:01:25  lr: 0.004513  loss: 1.4675 (1.6496)  time: 0.5653  data: 0.0001  max mem: 11083
+Epoch: [2]  [260/390]  eta: 0:01:13  lr: 0.004513  loss: 1.4625 (1.6345)  time: 0.5657  data: 0.0002  max mem: 11083
+Epoch: [2]  [280/390]  eta: 0:01:02  lr: 0.004513  loss: 1.5088 (1.6233)  time: 0.5664  data: 0.0002  max mem: 11083
+Epoch: [2]  [300/390]  eta: 0:00:51  lr: 0.004513  loss: 1.3897 (1.6088)  time: 0.5656  data: 0.0001  max mem: 11083
+Epoch: [2]  [320/390]  eta: 0:00:39  lr: 0.004513  loss: 1.4292 (1.5980)  time: 0.5654  data: 0.0001  max mem: 11083
+Epoch: [2]  [340/390]  eta: 0:00:28  lr: 0.004513  loss: 1.4070 (1.5870)  time: 0.5667  data: 0.0002  max mem: 11083
+Epoch: [2]  [360/390]  eta: 0:00:17  lr: 0.004513  loss: 1.3913 (1.5748)  time: 0.5653  data: 0.0001  max mem: 11083
+Epoch: [2]  [380/390]  eta: 0:00:05  lr: 0.004513  loss: 1.3481 (1.5633)  time: 0.5650  data: 0.0001  max mem: 11083
+Epoch: [2]  [389/390]  eta: 0:00:00  lr: 0.004513  loss: 1.2927 (1.5571)  time: 0.5647  data: 0.0001  max mem: 11083
+Epoch: [2] Total time: 0:03:41 (0.5678 s / it)
+Averaged stats: lr: 0.004513  loss: 1.2927 (1.5571)
+Test:  [ 0/79]  eta: 0:01:20  loss: 0.8840 (0.8840)  acc1: 88.2812 (88.2812)  acc5: 96.8750 (96.8750)  time: 1.0138  data: 0.7351  max mem: 11083
+Test:  [10/79]  eta: 0:00:25  loss: 0.9546 (0.9487)  acc1: 85.9375 (85.4403)  acc5: 97.6562 (97.7983)  time: 0.3704  data: 0.0899  max mem: 11083
+Test:  [20/79]  eta: 0:00:19  loss: 0.9546 (0.9522)  acc1: 85.1562 (85.3423)  acc5: 97.6562 (97.7679)  time: 0.2940  data: 0.0128  max mem: 11083
+Test:  [30/79]  eta: 0:00:15  loss: 0.9493 (0.9556)  acc1: 82.8125 (84.5010)  acc5: 97.6562 (97.7319)  time: 0.2833  data: 0.0018  max mem: 11083
+Test:  [40/79]  eta: 0:00:12  loss: 0.9493 (0.9585)  acc1: 82.8125 (84.5846)  acc5: 97.6562 (97.5991)  time: 0.2896  data: 0.0087  max mem: 11083
+Test:  [50/79]  eta: 0:00:08  loss: 0.9404 (0.9522)  acc1: 85.9375 (84.9112)  acc5: 98.4375 (97.7635)  time: 0.2921  data: 0.0113  max mem: 11083
+Test:  [60/79]  eta: 0:00:05  loss: 0.9403 (0.9468)  acc1: 85.9375 (84.9257)  acc5: 98.4375 (97.8227)  time: 0.2933  data: 0.0128  max mem: 11083
+Test:  [70/79]  eta: 0:00:02  loss: 0.9455 (0.9429)  acc1: 85.1562 (85.0352)  acc5: 98.4375 (97.8763)  time: 0.2941  data: 0.0139  max mem: 11083
+Test:  [78/79]  eta: 0:00:00  loss: 0.9455 (0.9433)  acc1: 86.7188 (85.1300)  acc5: 98.4375 (97.8500)  time: 0.2839  data: 0.0158  max mem: 11083
+Test: Total time: 0:00:23 (0.3003 s / it)
+* Acc@1 85.130 Acc@5 97.850 loss 0.943
+Accuracy of the network on the 10000 test images: 85.1%
+Max accuracy: 85.13%
+log_dir: ./results
+Epoch: [3]  [  0/390]  eta: 0:08:36  lr: 0.004287  loss: 1.2322 (1.2322)  time: 1.3231  data: 0.7619  max mem: 11083
+Epoch: [3]  [ 20/390]  eta: 0:03:43  lr: 0.004287  loss: 1.2821 (1.3218)  time: 0.5672  data: 0.0029  max mem: 11083
+Epoch: [3]  [ 40/390]  eta: 0:03:24  lr: 0.004287  loss: 1.3257 (1.3210)  time: 0.5651  data: 0.0004  max mem: 11083
+Epoch: [3]  [ 60/390]  eta: 0:03:10  lr: 0.004287  loss: 1.2414 (1.3003)  time: 0.5657  data: 0.0004  max mem: 11083
+Epoch: [3]  [ 80/390]  eta: 0:02:58  lr: 0.004287  loss: 1.2721 (1.2925)  time: 0.5648  data: 0.0003  max mem: 11083
+Epoch: [3]  [100/390]  eta: 0:02:46  lr: 0.004287  loss: 1.2478 (1.2861)  time: 0.5647  data: 0.0002  max mem: 11083
+Epoch: [3]  [120/390]  eta: 0:02:34  lr: 0.004287  loss: 1.1860 (1.2727)  time: 0.5658  data: 0.0002  max mem: 11083
+Epoch: [3]  [140/390]  eta: 0:02:22  lr: 0.004287  loss: 1.2208 (1.2646)  time: 0.5653  data: 0.0002  max mem: 11083
+Epoch: [3]  [160/390]  eta: 0:02:11  lr: 0.004287  loss: 1.1304 (1.2535)  time: 0.5649  data: 0.0002  max mem: 11083
+Epoch: [3]  [180/390]  eta: 0:01:59  lr: 0.004287  loss: 1.1243 (1.2421)  time: 0.5648  data: 0.0002  max mem: 11083
+Epoch: [3]  [200/390]  eta: 0:01:48  lr: 0.004287  loss: 1.2329 (1.2388)  time: 0.5662  data: 0.0004  max mem: 11083
+Epoch: [3]  [220/390]  eta: 0:01:36  lr: 0.004287  loss: 1.1804 (1.2329)  time: 0.5650  data: 0.0002  max mem: 11083
+Epoch: [3]  [240/390]  eta: 0:01:25  lr: 0.004287  loss: 1.1132 (1.2285)  time: 0.5648  data: 0.0002  max mem: 11083
+Epoch: [3]  [260/390]  eta: 0:01:13  lr: 0.004287  loss: 1.0960 (1.2197)  time: 0.5653  data: 0.0003  max mem: 11083
+Epoch: [3]  [280/390]  eta: 0:01:02  lr: 0.004287  loss: 1.1784 (1.2170)  time: 0.5660  data: 0.0003  max mem: 11083
+Epoch: [3]  [300/390]  eta: 0:00:51  lr: 0.004287  loss: 1.1525 (1.2103)  time: 0.5652  data: 0.0002  max mem: 11083
+Epoch: [3]  [320/390]  eta: 0:00:39  lr: 0.004287  loss: 1.1266 (1.2051)  time: 0.5650  data: 0.0003  max mem: 11083
+Epoch: [3]  [340/390]  eta: 0:00:28  lr: 0.004287  loss: 1.1245 (1.2005)  time: 0.5664  data: 0.0003  max mem: 11083
+Epoch: [3]  [360/390]  eta: 0:00:17  lr: 0.004287  loss: 1.1057 (1.1959)  time: 0.5655  data: 0.0003  max mem: 11083
+Epoch: [3]  [380/390]  eta: 0:00:05  lr: 0.004287  loss: 1.0718 (1.1922)  time: 0.5656  data: 0.0001  max mem: 11083
+Epoch: [3]  [389/390]  eta: 0:00:00  lr: 0.004287  loss: 1.0697 (1.1892)  time: 0.5646  data: 0.0001  max mem: 11083
+Epoch: [3] Total time: 0:03:41 (0.5676 s / it)
+Averaged stats: lr: 0.004287  loss: 1.0697 (1.1892)
+Test:  [ 0/79]  eta: 0:01:35  loss: 0.6510 (0.6510)  acc1: 91.4062 (91.4062)  acc5: 97.6562 (97.6562)  time: 1.2111  data: 0.9330  max mem: 11083
+Test:  [10/79]  eta: 0:00:25  loss: 0.6893 (0.7005)  acc1: 85.9375 (86.9318)  acc5: 97.6562 (98.0824)  time: 0.3658  data: 0.0850  max mem: 11083
+Test:  [20/79]  eta: 0:00:19  loss: 0.7012 (0.7128)  acc1: 85.9375 (86.9420)  acc5: 97.6562 (98.1027)  time: 0.2814  data: 0.0002  max mem: 11083
+Test:  [30/79]  eta: 0:00:15  loss: 0.7128 (0.7133)  acc1: 85.1562 (86.2147)  acc5: 98.4375 (98.1855)  time: 0.2870  data: 0.0058  max mem: 11083
+Test:  [40/79]  eta: 0:00:12  loss: 0.7128 (0.7134)  acc1: 85.1562 (86.1852)  acc5: 98.4375 (98.1707)  time: 0.2934  data: 0.0124  max mem: 11083
+Test:  [50/79]  eta: 0:00:08  loss: 0.6851 (0.7085)  acc1: 86.7188 (86.4277)  acc5: 98.4375 (98.2843)  time: 0.2948  data: 0.0140  max mem: 11083
+Test:  [60/79]  eta: 0:00:05  loss: 0.6851 (0.7024)  acc1: 87.5000 (86.7828)  acc5: 98.4375 (98.3607)  time: 0.2958  data: 0.0153  max mem: 11083
+Test:  [70/79]  eta: 0:00:02  loss: 0.6794 (0.6982)  acc1: 88.2812 (86.9278)  acc5: 98.4375 (98.3715)  time: 0.2937  data: 0.0133  max mem: 11083
+Test:  [78/79]  eta: 0:00:00  loss: 0.6941 (0.6990)  acc1: 86.7188 (86.9400)  acc5: 98.4375 (98.3400)  time: 0.2792  data: 0.0107  max mem: 11083
+Test: Total time: 0:00:23 (0.2999 s / it)
+* Acc@1 86.940 Acc@5 98.340 loss 0.699
+Accuracy of the network on the 10000 test images: 86.9%
+Max accuracy: 86.94%
+log_dir: ./results
+Epoch: [4]  [  0/390]  eta: 0:08:44  lr: 0.004073  loss: 0.8933 (0.8933)  time: 1.3455  data: 0.7829  max mem: 11083
+Epoch: [4]  [ 20/390]  eta: 0:03:43  lr: 0.004073  loss: 1.0542 (1.0662)  time: 0.5670  data: 0.0022  max mem: 11083
+Epoch: [4]  [ 40/390]  eta: 0:03:24  lr: 0.004073  loss: 1.0591 (1.0664)  time: 0.5652  data: 0.0003  max mem: 11083
+Epoch: [4]  [ 60/390]  eta: 0:03:11  lr: 0.004073  loss: 1.0467 (1.0578)  time: 0.5665  data: 0.0003  max mem: 11083
+Epoch: [4]  [ 80/390]  eta: 0:02:58  lr: 0.004073  loss: 1.0146 (1.0494)  time: 0.5655  data: 0.0002  max mem: 11083
+Epoch: [4]  [100/390]  eta: 0:02:46  lr: 0.004073  loss: 1.0209 (1.0481)  time: 0.5655  data: 0.0002  max mem: 11083
+Epoch: [4]  [120/390]  eta: 0:02:34  lr: 0.004073  loss: 1.0562 (1.0518)  time: 0.5667  data: 0.0003  max mem: 11083
+Epoch: [4]  [140/390]  eta: 0:02:22  lr: 0.004073  loss: 0.9863 (1.0439)  time: 0.5662  data: 0.0002  max mem: 11083
+Epoch: [4]  [160/390]  eta: 0:02:11  lr: 0.004073  loss: 0.9968 (1.0406)  time: 0.5658  data: 0.0002  max mem: 11083
+Epoch: [4]  [180/390]  eta: 0:01:59  lr: 0.004073  loss: 0.9510 (1.0347)  time: 0.5657  data: 0.0002  max mem: 11083
+Epoch: [4]  [200/390]  eta: 0:01:48  lr: 0.004073  loss: 1.0161 (1.0351)  time: 0.5674  data: 0.0002  max mem: 11083
+Epoch: [4]  [220/390]  eta: 0:01:36  lr: 0.004073  loss: 0.9922 (1.0327)  time: 0.5663  data: 0.0002  max mem: 11083
+Epoch: [4]  [240/390]  eta: 0:01:25  lr: 0.004073  loss: 0.9975 (1.0284)  time: 0.5659  data: 0.0002  max mem: 11083
+Epoch: [4]  [260/390]  eta: 0:01:13  lr: 0.004073  loss: 0.9971 (1.0283)  time: 0.5665  data: 0.0002  max mem: 11083
+Epoch: [4]  [280/390]  eta: 0:01:02  lr: 0.004073  loss: 0.9907 (1.0278)  time: 0.5673  data: 0.0003  max mem: 11083
+Epoch: [4]  [300/390]  eta: 0:00:51  lr: 0.004073  loss: 0.9790 (1.0258)  time: 0.5664  data: 0.0002  max mem: 11083
+Epoch: [4]  [320/390]  eta: 0:00:39  lr: 0.004073  loss: 0.9590 (1.0241)  time: 0.5662  data: 0.0002  max mem: 11083
+Epoch: [4]  [340/390]  eta: 0:00:28  lr: 0.004073  loss: 0.9705 (1.0224)  time: 0.5687  data: 0.0003  max mem: 11083
+Epoch: [4]  [360/390]  eta: 0:00:17  lr: 0.004073  loss: 0.9898 (1.0217)  time: 0.5665  data: 0.0002  max mem: 11083
+Epoch: [4]  [380/390]  eta: 0:00:05  lr: 0.004073  loss: 1.0182 (1.0227)  time: 0.5659  data: 0.0001  max mem: 11083
+Epoch: [4]  [389/390]  eta: 0:00:00  lr: 0.004073  loss: 0.9609 (1.0213)  time: 0.5657  data: 0.0001  max mem: 11083
+Epoch: [4] Total time: 0:03:41 (0.5687 s / it)
+Averaged stats: lr: 0.004073  loss: 0.9609 (1.0213)
+Test:  [ 0/79]  eta: 0:01:28  loss: 0.5390 (0.5390)  acc1: 90.6250 (90.6250)  acc5: 97.6562 (97.6562)  time: 1.1172  data: 0.8372  max mem: 11083
+Test:  [10/79]  eta: 0:00:24  loss: 0.5673 (0.5787)  acc1: 88.2812 (88.0682)  acc5: 99.2188 (98.7926)  time: 0.3620  data: 0.0807  max mem: 11083
+Test:  [20/79]  eta: 0:00:19  loss: 0.6027 (0.5973)  acc1: 88.2812 (88.0208)  acc5: 98.4375 (98.5491)  time: 0.2924  data: 0.0108  max mem: 11083
+Test:  [30/79]  eta: 0:00:15  loss: 0.6094 (0.5988)  acc1: 85.9375 (87.2984)  acc5: 98.4375 (98.6643)  time: 0.2932  data: 0.0114  max mem: 11083
+Test:  [40/79]  eta: 0:00:12  loss: 0.6109 (0.5991)  acc1: 85.9375 (87.2904)  acc5: 99.2188 (98.6280)  time: 0.2934  data: 0.0115  max mem: 11083
+Test:  [50/79]  eta: 0:00:08  loss: 0.5616 (0.5921)  acc1: 88.2812 (87.5613)  acc5: 99.2188 (98.6673)  time: 0.2980  data: 0.0163  max mem: 11083
+Test:  [60/79]  eta: 0:00:05  loss: 0.5614 (0.5861)  acc1: 89.0625 (87.7946)  acc5: 98.4375 (98.7065)  time: 0.2963  data: 0.0148  max mem: 11083
+Test:  [70/79]  eta: 0:00:02  loss: 0.5677 (0.5826)  acc1: 88.2812 (87.8411)  acc5: 98.4375 (98.7126)  time: 0.2951  data: 0.0140  max mem: 11083
+Test:  [78/79]  eta: 0:00:00  loss: 0.5680 (0.5838)  acc1: 88.2812 (87.8700)  acc5: 99.2188 (98.6800)  time: 0.2809  data: 0.0117  max mem: 11083
+Test: Total time: 0:00:23 (0.3021 s / it)
+* Acc@1 87.870 Acc@5 98.680 loss 0.584
+Accuracy of the network on the 10000 test images: 87.9%
+Max accuracy: 87.87%
+log_dir: ./results
+Epoch: [5]  [  0/390]  eta: 0:09:17  lr: 0.003869  loss: 0.9109 (0.9109)  time: 1.4306  data: 0.8677  max mem: 11083
+Epoch: [5]  [ 20/390]  eta: 0:03:44  lr: 0.003869  loss: 1.0010 (0.9997)  time: 0.5664  data: 0.0003  max mem: 11083
+Epoch: [5]  [ 40/390]  eta: 0:03:25  lr: 0.003869  loss: 0.9257 (0.9597)  time: 0.5665  data: 0.0003  max mem: 11083
+Epoch: [5]  [ 60/390]  eta: 0:03:11  lr: 0.003869  loss: 0.9347 (0.9576)  time: 0.5681  data: 0.0005  max mem: 11083
+Epoch: [5]  [ 80/390]  eta: 0:02:59  lr: 0.003869  loss: 0.9386 (0.9561)  time: 0.5665  data: 0.0003  max mem: 11083
+Epoch: [5]  [100/390]  eta: 0:02:46  lr: 0.003869  loss: 0.9206 (0.9516)  time: 0.5664  data: 0.0003  max mem: 11083
+Epoch: [5]  [120/390]  eta: 0:02:34  lr: 0.003869  loss: 0.9424 (0.9512)  time: 0.5671  data: 0.0003  max mem: 11083
+Epoch: [5]  [140/390]  eta: 0:02:23  lr: 0.003869  loss: 0.9684 (0.9525)  time: 0.5674  data: 0.0003  max mem: 11083
+Epoch: [5]  [160/390]  eta: 0:02:11  lr: 0.003869  loss: 0.8853 (0.9465)  time: 0.5666  data: 0.0002  max mem: 11083
+Epoch: [5]  [180/390]  eta: 0:02:00  lr: 0.003869  loss: 0.9052 (0.9422)  time: 0.5667  data: 0.0002  max mem: 11083
+Epoch: [5]  [200/390]  eta: 0:01:48  lr: 0.003869  loss: 0.9640 (0.9455)  time: 0.5678  data: 0.0003  max mem: 11083
+Epoch: [5]  [220/390]  eta: 0:01:37  lr: 0.003869  loss: 0.9299 (0.9426)  time: 0.5673  data: 0.0003  max mem: 11083
+Epoch: [5]  [240/390]  eta: 0:01:25  lr: 0.003869  loss: 0.8839 (0.9394)  time: 0.5665  data: 0.0002  max mem: 11083
+Epoch: [5]  [260/390]  eta: 0:01:14  lr: 0.003869  loss: 0.8880 (0.9364)  time: 0.5667  data: 0.0002  max mem: 11083
+Epoch: [5]  [280/390]  eta: 0:01:02  lr: 0.003869  loss: 0.9332 (0.9353)  time: 0.5681  data: 0.0003  max mem: 11083
+Epoch: [5]  [300/390]  eta: 0:00:51  lr: 0.003869  loss: 0.9161 (0.9346)  time: 0.5670  data: 0.0002  max mem: 11083
+Epoch: [5]  [320/390]  eta: 0:00:39  lr: 0.003869  loss: 0.9211 (0.9350)  time: 0.5667  data: 0.0003  max mem: 11083
+Epoch: [5]  [340/390]  eta: 0:00:28  lr: 0.003869  loss: 0.9823 (0.9373)  time: 0.5673  data: 0.0002  max mem: 11083
+Epoch: [5]  [360/390]  eta: 0:00:17  lr: 0.003869  loss: 0.8989 (0.9367)  time: 0.5684  data: 0.0003  max mem: 11083
+Epoch: [5]  [380/390]  eta: 0:00:05  lr: 0.003869  loss: 0.9531 (0.9367)  time: 0.5675  data: 0.0002  max mem: 11083
+Epoch: [5]  [389/390]  eta: 0:00:00  lr: 0.003869  loss: 0.8458 (0.9348)  time: 0.5663  data: 0.0001  max mem: 11083
+Epoch: [5] Total time: 0:03:42 (0.5696 s / it)
+Averaged stats: lr: 0.003869  loss: 0.8458 (0.9348)
+Test:  [ 0/79]  eta: 0:01:13  loss: 0.4479 (0.4479)  acc1: 92.9688 (92.9688)  acc5: 98.4375 (98.4375)  time: 0.9338  data: 0.6543  max mem: 11083
+Test:  [10/79]  eta: 0:00:24  loss: 0.4898 (0.5043)  acc1: 89.8438 (89.2756)  acc5: 99.2188 (99.1477)  time: 0.3613  data: 0.0801  max mem: 11083
+Test:  [20/79]  eta: 0:00:19  loss: 0.5145 (0.5215)  acc1: 89.0625 (88.9137)  acc5: 98.4375 (98.8095)  time: 0.2998  data: 0.0182  max mem: 11083
+Test:  [30/79]  eta: 0:00:15  loss: 0.5429 (0.5242)  acc1: 87.5000 (88.0796)  acc5: 98.4375 (98.9163)  time: 0.2910  data: 0.0093  max mem: 11083
+Test:  [40/79]  eta: 0:00:12  loss: 0.5478 (0.5229)  acc1: 87.5000 (88.2622)  acc5: 99.2188 (98.8186)  time: 0.2904  data: 0.0087  max mem: 11083
+Test:  [50/79]  eta: 0:00:08  loss: 0.4785 (0.5171)  acc1: 89.0625 (88.4957)  acc5: 98.4375 (98.8051)  time: 0.2919  data: 0.0101  max mem: 11083
+Test:  [60/79]  eta: 0:00:05  loss: 0.4986 (0.5123)  acc1: 89.0625 (88.6270)  acc5: 98.4375 (98.8345)  time: 0.2903  data: 0.0083  max mem: 11083
+Test:  [70/79]  eta: 0:00:02  loss: 0.4986 (0.5087)  acc1: 88.2812 (88.6774)  acc5: 99.2188 (98.7896)  time: 0.2928  data: 0.0110  max mem: 11083
+Test:  [78/79]  eta: 0:00:00  loss: 0.5041 (0.5101)  acc1: 88.2812 (88.6900)  acc5: 99.2188 (98.7500)  time: 0.2820  data: 0.0124  max mem: 11083
+Test: Total time: 0:00:23 (0.3000 s / it)
+* Acc@1 88.690 Acc@5 98.750 loss 0.510
+Accuracy of the network on the 10000 test images: 88.7%
+Max accuracy: 88.69%
+log_dir: ./results
+Epoch: [6]  [  0/390]  eta: 0:09:08  lr: 0.003675  loss: 0.8046 (0.8046)  time: 1.4058  data: 0.8424  max mem: 11083
+Epoch: [6]  [ 20/390]  eta: 0:03:45  lr: 0.003675  loss: 0.9296 (0.9105)  time: 0.5707  data: 0.0032  max mem: 11083
+Epoch: [6]  [ 40/390]  eta: 0:03:26  lr: 0.003675  loss: 0.8885 (0.9032)  time: 0.5663  data: 0.0003  max mem: 11083
+Epoch: [6]  [ 60/390]  eta: 0:03:11  lr: 0.003675  loss: 0.8432 (0.8829)  time: 0.5664  data: 0.0002  max mem: 11083
+Epoch: [6]  [ 80/390]  eta: 0:02:59  lr: 0.003675  loss: 0.9305 (0.8845)  time: 0.5668  data: 0.0002  max mem: 11083
+Epoch: [6]  [100/390]  eta: 0:02:46  lr: 0.003675  loss: 0.9062 (0.8833)  time: 0.5673  data: 0.0003  max mem: 11083
+Epoch: [6]  [120/390]  eta: 0:02:35  lr: 0.003675  loss: 0.8142 (0.8782)  time: 0.5664  data: 0.0002  max mem: 11083
+Epoch: [6]  [140/390]  eta: 0:02:23  lr: 0.003675  loss: 0.8945 (0.8780)  time: 0.5667  data: 0.0002  max mem: 11083
+Epoch: [6]  [160/390]  eta: 0:02:11  lr: 0.003675  loss: 0.8298 (0.8738)  time: 0.5677  data: 0.0003  max mem: 11083
+Epoch: [6]  [180/390]  eta: 0:02:00  lr: 0.003675  loss: 0.8723 (0.8738)  time: 0.5667  data: 0.0002  max mem: 11083
+Epoch: [6]  [200/390]  eta: 0:01:48  lr: 0.003675  loss: 0.8782 (0.8750)  time: 0.5665  data: 0.0002  max mem: 11083
+Epoch: [6]  [220/390]  eta: 0:01:37  lr: 0.003675  loss: 0.9088 (0.8764)  time: 0.5664  data: 0.0002  max mem: 11083
+Epoch: [6]  [240/390]  eta: 0:01:25  lr: 0.003675  loss: 0.8538 (0.8754)  time: 0.5675  data: 0.0003  max mem: 11083
+Epoch: [6]  [260/390]  eta: 0:01:14  lr: 0.003675  loss: 0.9283 (0.8785)  time: 0.5664  data: 0.0002  max mem: 11083
+Epoch: [6]  [280/390]  eta: 0:01:02  lr: 0.003675  loss: 0.8228 (0.8774)  time: 0.5664  data: 0.0003  max mem: 11083
+Epoch: [6]  [300/390]  eta: 0:00:51  lr: 0.003675  loss: 0.8522 (0.8760)  time: 0.5671  data: 0.0003  max mem: 11083
+Epoch: [6]  [320/390]  eta: 0:00:39  lr: 0.003675  loss: 0.8592 (0.8761)  time: 0.5667  data: 0.0002  max mem: 11083
+Epoch: [6]  [340/390]  eta: 0:00:28  lr: 0.003675  loss: 0.9051 (0.8775)  time: 0.5662  data: 0.0003  max mem: 11083
+Epoch: [6]  [360/390]  eta: 0:00:17  lr: 0.003675  loss: 0.8899 (0.8780)  time: 0.5664  data: 0.0003  max mem: 11083
+Epoch: [6]  [380/390]  eta: 0:00:05  lr: 0.003675  loss: 0.8163 (0.8762)  time: 0.5669  data: 0.0002  max mem: 11083
+Epoch: [6]  [389/390]  eta: 0:00:00  lr: 0.003675  loss: 0.7994 (0.8751)  time: 0.5662  data: 0.0001  max mem: 11083
+Epoch: [6] Total time: 0:03:42 (0.5693 s / it)
+Averaged stats: lr: 0.003675  loss: 0.7994 (0.8751)
+Test:  [ 0/79]  eta: 0:01:25  loss: 0.3901 (0.3901)  acc1: 94.5312 (94.5312)  acc5: 98.4375 (98.4375)  time: 1.0870  data: 0.8069  max mem: 11083
+Test:  [10/79]  eta: 0:00:24  loss: 0.4752 (0.4663)  acc1: 89.8438 (89.7017)  acc5: 99.2188 (99.0767)  time: 0.3581  data: 0.0768  max mem: 11083
+Test:  [20/79]  eta: 0:00:19  loss: 0.4752 (0.4799)  acc1: 89.0625 (89.2113)  acc5: 98.4375 (98.7351)  time: 0.2909  data: 0.0093  max mem: 11083
+Test:  [30/79]  eta: 0:00:15  loss: 0.4938 (0.4829)  acc1: 88.2812 (88.5333)  acc5: 98.4375 (98.8659)  time: 0.2919  data: 0.0102  max mem: 11083
+Test:  [40/79]  eta: 0:00:12  loss: 0.4955 (0.4806)  acc1: 87.5000 (88.5671)  acc5: 99.2188 (98.7995)  time: 0.2912  data: 0.0098  max mem: 11083
+Test:  [50/79]  eta: 0:00:08  loss: 0.4475 (0.4769)  acc1: 89.0625 (88.5723)  acc5: 98.4375 (98.8205)  time: 0.2927  data: 0.0115  max mem: 11083
+Test:  [60/79]  eta: 0:00:05  loss: 0.4561 (0.4717)  acc1: 89.0625 (88.7679)  acc5: 98.4375 (98.8217)  time: 0.2900  data: 0.0087  max mem: 11083
+Test:  [70/79]  eta: 0:00:02  loss: 0.4529 (0.4670)  acc1: 89.0625 (88.9415)  acc5: 99.2188 (98.8446)  time: 0.2920  data: 0.0108  max mem: 11083
+Test:  [78/79]  eta: 0:00:00  loss: 0.4517 (0.4675)  acc1: 89.8438 (88.9700)  acc5: 99.2188 (98.8200)  time: 0.2820  data: 0.0129  max mem: 11083
+Test: Total time: 0:00:23 (0.2994 s / it)
+* Acc@1 88.970 Acc@5 98.820 loss 0.467
+Accuracy of the network on the 10000 test images: 89.0%
+Max accuracy: 88.97%
+log_dir: ./results
+Epoch: [7]  [  0/390]  eta: 0:08:10  lr: 0.003492  loss: 0.8385 (0.8385)  time: 1.2574  data: 0.6953  max mem: 11083
+Epoch: [7]  [ 20/390]  eta: 0:03:42  lr: 0.003492  loss: 0.8172 (0.8567)  time: 0.5684  data: 0.0020  max mem: 11083
+Epoch: [7]  [ 40/390]  eta: 0:03:24  lr: 0.003492  loss: 0.8622 (0.8599)  time: 0.5658  data: 0.0003  max mem: 11083
+Epoch: [7]  [ 60/390]  eta: 0:03:10  lr: 0.003492  loss: 0.7395 (0.8344)  time: 0.5658  data: 0.0003  max mem: 11083
+Epoch: [7]  [ 80/390]  eta: 0:02:58  lr: 0.003492  loss: 0.8271 (0.8344)  time: 0.5665  data: 0.0004  max mem: 11083
+Epoch: [7]  [100/390]  eta: 0:02:46  lr: 0.003492  loss: 0.8209 (0.8322)  time: 0.5679  data: 0.0005  max mem: 11083
+Epoch: [7]  [120/390]  eta: 0:02:34  lr: 0.003492  loss: 0.8178 (0.8310)  time: 0.5663  data: 0.0004  max mem: 11083
+Epoch: [7]  [140/390]  eta: 0:02:22  lr: 0.003492  loss: 0.8316 (0.8313)  time: 0.5660  data: 0.0003  max mem: 11083
+Epoch: [7]  [160/390]  eta: 0:02:11  lr: 0.003492  loss: 0.8117 (0.8280)  time: 0.5661  data: 0.0003  max mem: 11083
+Epoch: [7]  [180/390]  eta: 0:01:59  lr: 0.003492  loss: 0.8236 (0.8262)  time: 0.5675  data: 0.0004  max mem: 11083
+Epoch: [7]  [200/390]  eta: 0:01:48  lr: 0.003492  loss: 0.8388 (0.8274)  time: 0.5659  data: 0.0002  max mem: 11083
+Epoch: [7]  [220/390]  eta: 0:01:36  lr: 0.003492  loss: 0.8214 (0.8282)  time: 0.5656  data: 0.0002  max mem: 11083
+Epoch: [7]  [240/390]  eta: 0:01:25  lr: 0.003492  loss: 0.7760 (0.8287)  time: 0.5662  data: 0.0003  max mem: 11083
+Epoch: [7]  [260/390]  eta: 0:01:13  lr: 0.003492  loss: 0.8425 (0.8290)  time: 0.5667  data: 0.0003  max mem: 11083
+Epoch: [7]  [280/390]  eta: 0:01:02  lr: 0.003492  loss: 0.8434 (0.8309)  time: 0.5657  data: 0.0002  max mem: 11083
+Epoch: [7]  [300/390]  eta: 0:00:51  lr: 0.003492  loss: 0.7841 (0.8291)  time: 0.5657  data: 0.0002  max mem: 11083
+Epoch: [7]  [320/390]  eta: 0:00:39  lr: 0.003492  loss: 0.8109 (0.8284)  time: 0.5665  data: 0.0003  max mem: 11083
+Epoch: [7]  [340/390]  eta: 0:00:28  lr: 0.003492  loss: 0.9041 (0.8306)  time: 0.5661  data: 0.0002  max mem: 11083
+Epoch: [7]  [360/390]  eta: 0:00:17  lr: 0.003492  loss: 0.8165 (0.8291)  time: 0.5659  data: 0.0004  max mem: 11083
+Epoch: [7]  [380/390]  eta: 0:00:05  lr: 0.003492  loss: 0.7960 (0.8290)  time: 0.5654  data: 0.0002  max mem: 11083
+Epoch: [7]  [389/390]  eta: 0:00:00  lr: 0.003492  loss: 0.7873 (0.8289)  time: 0.5655  data: 0.0001  max mem: 11083
+Epoch: [7] Total time: 0:03:41 (0.5683 s / it)
+Averaged stats: lr: 0.003492  loss: 0.7873 (0.8289)
+Test:  [ 0/79]  eta: 0:01:41  loss: 0.3735 (0.3735)  acc1: 92.9688 (92.9688)  acc5: 98.4375 (98.4375)  time: 1.2822  data: 1.0038  max mem: 11083
+Test:  [10/79]  eta: 0:00:26  loss: 0.4387 (0.4333)  acc1: 89.8438 (90.1278)  acc5: 99.2188 (99.1477)  time: 0.3825  data: 0.1012  max mem: 11083
+Test:  [20/79]  eta: 0:00:20  loss: 0.4649 (0.4560)  acc1: 89.0625 (89.3973)  acc5: 99.2188 (98.8839)  time: 0.2946  data: 0.0132  max mem: 11083
+Test:  [30/79]  eta: 0:00:15  loss: 0.4649 (0.4573)  acc1: 87.5000 (88.9365)  acc5: 99.2188 (98.9919)  time: 0.2891  data: 0.0079  max mem: 11083
+Test:  [40/79]  eta: 0:00:12  loss: 0.4600 (0.4538)  acc1: 88.2812 (88.9291)  acc5: 99.2188 (98.9329)  time: 0.2871  data: 0.0061  max mem: 11083
+Test:  [50/79]  eta: 0:00:09  loss: 0.4550 (0.4492)  acc1: 89.8438 (89.0319)  acc5: 98.4375 (98.9124)  time: 0.2933  data: 0.0125  max mem: 11083
+Test:  [60/79]  eta: 0:00:05  loss: 0.4239 (0.4451)  acc1: 89.8438 (89.1265)  acc5: 98.4375 (98.8858)  time: 0.2944  data: 0.0137  max mem: 11083
+Test:  [70/79]  eta: 0:00:02  loss: 0.4239 (0.4394)  acc1: 89.8438 (89.3266)  acc5: 98.4375 (98.8996)  time: 0.2976  data: 0.0170  max mem: 11083
+Test:  [78/79]  eta: 0:00:00  loss: 0.4333 (0.4407)  acc1: 90.6250 (89.3800)  acc5: 99.2188 (98.8600)  time: 0.2830  data: 0.0145  max mem: 11083
+Test: Total time: 0:00:23 (0.3033 s / it)
+* Acc@1 89.380 Acc@5 98.860 loss 0.441
+Accuracy of the network on the 10000 test images: 89.4%
+Max accuracy: 89.38%
+log_dir: ./results
+Epoch: [8]  [  0/390]  eta: 0:07:50  lr: 0.003317  loss: 0.7179 (0.7179)  time: 1.2072  data: 0.6475  max mem: 11083
+Epoch: [8]  [ 20/390]  eta: 0:03:41  lr: 0.003317  loss: 0.7668 (0.7803)  time: 0.5685  data: 0.0039  max mem: 11083
+Epoch: [8]  [ 40/390]  eta: 0:03:23  lr: 0.003317  loss: 0.7798 (0.7854)  time: 0.5659  data: 0.0004  max mem: 11083
+Epoch: [8]  [ 60/390]  eta: 0:03:10  lr: 0.003317  loss: 0.8174 (0.7908)  time: 0.5655  data: 0.0002  max mem: 11083
+Epoch: [8]  [ 80/390]  eta: 0:02:57  lr: 0.003317  loss: 0.7766 (0.7903)  time: 0.5650  data: 0.0002  max mem: 11083
+Epoch: [8]  [100/390]  eta: 0:02:45  lr: 0.003317  loss: 0.7575 (0.7854)  time: 0.5648  data: 0.0002  max mem: 11083
+Epoch: [8]  [120/390]  eta: 0:02:34  lr: 0.003317  loss: 0.7657 (0.7844)  time: 0.5659  data: 0.0003  max mem: 11083
+Epoch: [8]  [140/390]  eta: 0:02:22  lr: 0.003317  loss: 0.8421 (0.7884)  time: 0.5651  data: 0.0003  max mem: 11083
+Epoch: [8]  [160/390]  eta: 0:02:11  lr: 0.003317  loss: 0.7377 (0.7865)  time: 0.5652  data: 0.0003  max mem: 11083
+Epoch: [8]  [180/390]  eta: 0:01:59  lr: 0.003317  loss: 0.7970 (0.7860)  time: 0.5649  data: 0.0003  max mem: 11083
+Epoch: [8]  [200/390]  eta: 0:01:48  lr: 0.003317  loss: 0.7963 (0.7872)  time: 0.5662  data: 0.0004  max mem: 11083
+Epoch: [8]  [220/390]  eta: 0:01:36  lr: 0.003317  loss: 0.7669 (0.7847)  time: 0.5648  data: 0.0002  max mem: 11083
+Epoch: [8]  [240/390]  eta: 0:01:25  lr: 0.003317  loss: 0.7397 (0.7823)  time: 0.5650  data: 0.0003  max mem: 11083
+Epoch: [8]  [260/390]  eta: 0:01:13  lr: 0.003317  loss: 0.7830 (0.7838)  time: 0.5654  data: 0.0003  max mem: 11083
+Epoch: [8]  [280/390]  eta: 0:01:02  lr: 0.003317  loss: 0.7836 (0.7853)  time: 0.5652  data: 0.0002  max mem: 11083
+Epoch: [8]  [300/390]  eta: 0:00:51  lr: 0.003317  loss: 0.8203 (0.7872)  time: 0.5648  data: 0.0002  max mem: 11083
+Epoch: [8]  [320/390]  eta: 0:00:39  lr: 0.003317  loss: 0.7921 (0.7900)  time: 0.5650  data: 0.0002  max mem: 11083
+Epoch: [8]  [340/390]  eta: 0:00:28  lr: 0.003317  loss: 0.8097 (0.7912)  time: 0.5655  data: 0.0003  max mem: 11083
+Epoch: [8]  [360/390]  eta: 0:00:17  lr: 0.003317  loss: 0.8145 (0.7934)  time: 0.5647  data: 0.0003  max mem: 11083
+Epoch: [8]  [380/390]  eta: 0:00:05  lr: 0.003317  loss: 0.7930 (0.7933)  time: 0.5646  data: 0.0001  max mem: 11083
+Epoch: [8]  [389/390]  eta: 0:00:00  lr: 0.003317  loss: 0.7541 (0.7924)  time: 0.5646  data: 0.0001  max mem: 11083
+Epoch: [8] Total time: 0:03:41 (0.5673 s / it)
+Averaged stats: lr: 0.003317  loss: 0.7541 (0.7924)

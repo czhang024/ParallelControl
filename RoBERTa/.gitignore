@@ -1,0 +1,11 @@
+output
+__pycache__
+.ipynb_checkpoints
+wandb
+logs
+results
+vit*/
+data/*
+!data/.gitkeep
+results_*
+result*
