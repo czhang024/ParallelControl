@@ -1,49 +1,69 @@
-# Finetuning ViT on CIFAR-100 Dataset
+# 🎯 Fine-tuning ViT on CIFAR-100 Dataset
 
-This is the repository containing the ViT toy experiment. 
+This repository contains the Vision Transformer (ViT) experiments for comparing different Parameter-Efficient Fine-Tuning (PEFT) methods on image classification tasks.
 
-## Setup
+## 🛠️ Setup
+
 ```bash
 conda create -n ViT python=3.9
 conda activate ViT
 pip install -r requirements.txt
 ```
 
-## Datasets and Pretrained-Model
+## 📁 Datasets and Pre-trained Model
 
-1. Download the CIFAR-100 dataset and change the location of data_path in `run_ViT.sh`.
+### 1. CIFAR-100 Dataset
+Download the CIFAR-100 dataset and update the `data_path` location in `run_ViT.sh`.
 
-2. Download the pretrained model as 
+### 2. Pre-trained ViT Model
+Download the ImageNet21k pre-trained Vision Transformer:
+
 ```bash
 wget https://storage.googleapis.com/vit_models/imagenet21k/ViT-B_16.npz
 ```
 
-3. Place the downloaded model to the `pretrained` folder.
-
-
-## Usage
-### Finetuning with `run_ViT.sh`
-1. An example code would be:
-
-```bash
-sh run_ViT.sh "control" 0 # Parallel Control
-sh run_ViT.sh "lora" 0 # LoRA
-sh run_ViT.sh "dora" 0 # DoRA
+### 3. Model Placement
+Place the downloaded model file in the `pretrained` folder:
 ```
-Here the first argument denotes the PEFT method; the second argument represents the GPU index.
+pretrained/
+└── ViT-B_16.npz
+```
 
-2. A typical memory consumption for the Control/LoRA/ would be
+## 🚀 Usage
+
+### Fine-tuning with `run_ViT.sh`
+
+**Basic Commands:**
+```bash
+sh run_ViT.sh "control" 0  # 🎯 Parallel Control
+sh run_ViT.sh "lora" 0     # ⚡ LoRA  
+sh run_ViT.sh "dora" 0     # ✨ DoRA
+```
+
+**Parameters:**
+- First argument: PEFT method (`control`, `lora`, or `dora`)
+- Second argument: GPU index (0, 1, 2, etc.)
+
+### 📊 Memory Consumption Analysis
+
+Typical memory usage comparison with extended ViT MLP (4 layers):
 
 <div align="center">
 
-| **Algorithm** | **# of Params** | **GPU Memory** 
-|---------------|-----------------|------------------|
-| LoRA          | 1.27 M          | 18.010 GB       
-| Control       | 1.27 M          | 12.280 GB   
+| **Algorithm** | **# of Params** | **GPU Memory** | **Memory Efficiency** |
+|---------------|-----------------|----------------|----------------------|
+| LoRA          | 1.27 M          | 18.010 GB      | Baseline            |
+| **Control**   | **1.27 M**      | **12.280 GB**  | **🔥 32% Reduction** |
 
 </div>
 
-As shown in the table, the GPU memory usage is significantly reduced for the control method, despite having the same number of parameters. Note that we extend the ViT MLP block to 4 layers in this setting.
 
-3. If you need to change which layer to add control, you may change the Block function of the `models/custom_models.py` file.
+### 🔧 Customization
 
+**Modifying Control Layers:**
+To change which layers use the control method, edit the `Block` function in:
+```
+models/custom_models.py
+```
+
+This allows you to experiment with different architectural configurations and control placement strategies.

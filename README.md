@@ -1,38 +1,113 @@
 <h1 align="center">
     <p> From Weight-Based to State-Based Fine-Tuning: Further Memory Reduction on
-LoRA with Parallel Control <br> [ICML 2025 (Spotlight)]</p>
+LoRA with Parallel Control <br> 
+    [ICML 2025 (Spotlight)] 🌟</p>
 </h1>
 
-The Official PyTorch implementation of [**From Weight-Based to State-Based Fine-Tuning: Further Memory Reduction on
-LoRA with Parallel Control**](TBD) [ICML 2025 (Spotlight, acceptance rate: ***2.59%***)].
+<div align="center">
+  <img src="https://img.shields.io/badge/ICML-2025-red?style=for-the-badge&logo=arxiv" alt="ICML 2025">
+  <img src="https://img.shields.io/badge/Spotlight-2.59%25-gold?style=for-the-badge" alt="Acceptance Rate">
+  <img src="https://img.shields.io/badge/PyTorch-EE4C2C?style=for-the-badge&logo=pytorch&logoColor=white" alt="PyTorch">
+  <img src="https://img.shields.io/badge/Memory-Efficient-green?style=for-the-badge" alt="Memory Efficient">
+</div>
 
-## 📁 Directory Structure
-
-### 1. [`RoBERTa_GLUE`](./RoBERTa_GLUE/)
-Experiments using **RoBERTa** on the **GLUE benchmark** for natural language understanding.  
-Includes training, evaluation scripts, and instructions for replicating results on all GLUE tasks.
-
-### 2. [`ViT`](./ViT/)
-Experiments with **Vision Transformer (ViT)** on image classification tasks.  
-Contains model training code, data preprocessing scripts, and usage guidelines.
-
-### 3. [`LlaMA`](./LlaMA/)
-Commonsense reasoning tasks using **LLaMA2** and **LLaMA3** models.  
-Includes scripts for prompt-based evaluation, fine-tuning, and detailed usage instructions.
-
-### 4. [`QControl`](./QControl/)
-Include Quantization for Control/LoRA/DoRA on the RoBERTa model.
+<div align="center">
+  <h3>🔥 The Official PyTorch Implementation 🔥</h3>
+  <p><strong>📄 Paper:</strong> <a href="TBD">From Weight-Based to State-Based Fine-Tuning: Further Memory Reduction on LoRA with Parallel Control</a></p>
+  <p><strong>✨ Spotlight Paper at ICML 2025 (Acceptance Rate: 2.59%)</strong></p>
+</div>
 
 ---
 
-## 📦 How to Use
+## 🎯 What's New?
 
-Each subdirectory contains:
+💡 **New Understandings to PEFT**: Transform traditional weight-based fine-tuning into state-based optimization!
 
-- Instructions for installation and usage (`README.md` in each folder)
-- Model-specific code
-- Scripts for training and evaluation
-
-Please refer to the individual folders for detailed setup and execution guidance.
+💡 **Memory Reductions**: Further reduce the memory costs for large models!
 
 ---
+
+## 📁 Repository Structure
+
+### 1. [`RoBERTa`](./RoBERTa/)
+- Experiments using **RoBERTa** on the **GLUE benchmark**
+- Performance comparisons: Control vs LoRA vs DoRA
+- Instructions for replicating results on all 8 GLUE tasks
+
+
+### 2. [`ViT`](./ViT/) 
+- **Vision Transformer (ViT)** experiments on image classification
+- Support for multiple vision datasets
+- Memory usage comparison analysis
+
+
+### 3. [`LlaMA`](./LlaMA/) 
+- Experiments with **LLaMA2** and **LLaMA3** models
+- Commonsense reasoning task evaluations
+- Fine-tuning scripts for large-scale models
+
+
+### 4. [`QControl`](./QControl/) - Quantization Integration
+- **Quantization** support for all methods (Control/LoRA/DoRA)
+- Optimized for **RoBERTa** models
+- Ultra-low memory footprint training
+
+
+
+---
+
+## 🚀 Quick Start Guide
+
+### 📋 Prerequisites
+```bash
+# 🐍 Python 3.9+
+# 🔥 PyTorch 1.12+
+# 🤗 Transformers
+# 📊 Additional dependencies in each subdirectory
+```
+
+### 🛠️ Installation
+```bash
+# Clone the repository
+git clone https://github.com/czhang024/ParallelControl
+
+# 📂 Navigate to your desired experiment folder
+cd RoBERTa  # or ViT, LlaMA, QControl
+```
+
+---
+
+<!-- ## 📚 Citation
+
+If you use this work in your research, please cite our paper:
+
+```bibtex
+@inproceedings{your2025memory,
+  title={From Weight-Based to State-Based Fine-Tuning: Further Memory Reduction on LoRA with Parallel Control},
+  author={Your Name and Co-authors},
+  booktitle={International Conference on Machine Learning (ICML)},
+  year={2025},
+  note={Spotlight Paper, Acceptance Rate: 2.59\%}
+}
+``` -->
+
+---
+
+## 🙏 Acknowledgments
+
+Special thanks to:
+- 🏛️ The **ICML 2025** review committee
+- 🤗 **Hugging Face** for the Transformers library
+- 🔥 **PyTorch** team for the framework
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+<div align="center">
+  <h3>🌟 Star this repo if you find it helpful! 🌟</h3>
+</div>
