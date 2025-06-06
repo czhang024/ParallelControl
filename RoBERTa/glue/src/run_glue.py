@@ -82,7 +82,7 @@ def parse_args():
                        help="Output directory")
     parser.add_argument("--logging_dir", type=str, default="logs",
                        help="Logging directory")
-    parser.add_argument("--evaluation_strategy", type=str, default="steps",
+    parser.add_argument("--eval_strategy", type=str, default="steps",
                        help="Evaluation strategy")
     parser.add_argument("--save_strategy", type=str, default="no",
                        help="Save strategy")
@@ -127,7 +127,7 @@ def main():
         lr_scheduler_type=args.lr_scheduler_type,
         output_dir=args.output_dir,
         logging_dir=args.logging_dir,
-        evaluation_strategy=args.evaluation_strategy,
+        eval_strategy=args.eval_strategy,
         save_strategy=args.save_strategy,
         report_to=args.report_to,
         keep_checkpoints=args.keep_checkpoints,

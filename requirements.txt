@@ -1,0 +1,17 @@
+accelerate
+easydict
+numpy
+peft
+torch
+torchvision
+timm
+tqdm
+tensorboard
+transformers
+peft
+datasets
+evaluate
+wandb
+scipy
+scikit-learn
+fire
