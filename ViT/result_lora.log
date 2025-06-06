@@ -529,3 +529,40 @@ Test: Total time: 0:00:30 (0.3880 s / it)
 Accuracy of the network on the 10000 test images: 90.3%
 Max accuracy: 90.28%
 log_dir: ./results
+Epoch: [11]  [  0/390]  eta: 0:10:18  lr: 0.002844  loss: 0.7776 (0.7776)  time: 1.5847  data: 0.8089  max mem: 17067
+Epoch: [11]  [ 20/390]  eta: 0:05:03  lr: 0.002844  loss: 0.6843 (0.7034)  time: 0.7808  data: 0.0014  max mem: 17067
+Epoch: [11]  [ 40/390]  eta: 0:04:39  lr: 0.002844  loss: 0.6915 (0.7142)  time: 0.7796  data: 0.0003  max mem: 17067
+Epoch: [11]  [ 60/390]  eta: 0:04:21  lr: 0.002844  loss: 0.6644 (0.7064)  time: 0.7789  data: 0.0002  max mem: 17067
+Epoch: [11]  [ 80/390]  eta: 0:04:04  lr: 0.002844  loss: 0.6742 (0.7003)  time: 0.7801  data: 0.0003  max mem: 17067
+Epoch: [11]  [100/390]  eta: 0:03:48  lr: 0.002844  loss: 0.6262 (0.6916)  time: 0.7797  data: 0.0002  max mem: 17067
+Epoch: [11]  [120/390]  eta: 0:03:32  lr: 0.002844  loss: 0.7002 (0.6927)  time: 0.7797  data: 0.0003  max mem: 17067
+Epoch: [11]  [140/390]  eta: 0:03:16  lr: 0.002844  loss: 0.7049 (0.6945)  time: 0.7794  data: 0.0002  max mem: 17067
+Epoch: [11]  [160/390]  eta: 0:03:00  lr: 0.002844  loss: 0.7110 (0.6953)  time: 0.7797  data: 0.0003  max mem: 17067
+Epoch: [11]  [180/390]  eta: 0:02:44  lr: 0.002844  loss: 0.6738 (0.6935)  time: 0.7796  data: 0.0002  max mem: 17067
+Epoch: [11]  [200/390]  eta: 0:02:28  lr: 0.002844  loss: 0.6761 (0.6953)  time: 0.7795  data: 0.0003  max mem: 17067
+Epoch: [11]  [220/390]  eta: 0:02:13  lr: 0.002844  loss: 0.6983 (0.6973)  time: 0.7794  data: 0.0003  max mem: 17067
+Epoch: [11]  [240/390]  eta: 0:01:57  lr: 0.002844  loss: 0.6601 (0.6974)  time: 0.7790  data: 0.0002  max mem: 17067
+Epoch: [11]  [260/390]  eta: 0:01:41  lr: 0.002844  loss: 0.7014 (0.6979)  time: 0.7788  data: 0.0002  max mem: 17067
+Epoch: [11]  [280/390]  eta: 0:01:26  lr: 0.002844  loss: 0.7250 (0.7010)  time: 0.7793  data: 0.0003  max mem: 17067
+Epoch: [11]  [300/390]  eta: 0:01:10  lr: 0.002844  loss: 0.6417 (0.6981)  time: 0.7789  data: 0.0002  max mem: 17067
+Epoch: [11]  [320/390]  eta: 0:00:54  lr: 0.002844  loss: 0.6677 (0.6980)  time: 0.7790  data: 0.0002  max mem: 17067
+Epoch: [11]  [340/390]  eta: 0:00:39  lr: 0.002844  loss: 0.7051 (0.6990)  time: 0.7787  data: 0.0002  max mem: 17067
+Epoch: [11]  [360/390]  eta: 0:00:23  lr: 0.002844  loss: 0.6877 (0.7000)  time: 0.7787  data: 0.0004  max mem: 17067
+Epoch: [11]  [380/390]  eta: 0:00:07  lr: 0.002844  loss: 0.6680 (0.7003)  time: 0.7790  data: 0.0003  max mem: 17067
+Epoch: [11]  [389/390]  eta: 0:00:00  lr: 0.002844  loss: 0.7153 (0.7014)  time: 0.7783  data: 0.0001  max mem: 17067
+Epoch: [11] Total time: 0:05:04 (0.7817 s / it)
+Averaged stats: lr: 0.002844  loss: 0.7153 (0.7014)
+Test:  [ 0/79]  eta: 0:01:43  loss: 0.3135 (0.3135)  acc1: 92.9688 (92.9688)  acc5: 100.0000 (100.0000)  time: 1.3147  data: 0.9433  max mem: 17067
+Test:  [10/79]  eta: 0:00:32  loss: 0.3673 (0.3657)  acc1: 89.0625 (89.7727)  acc5: 99.2188 (99.3608)  time: 0.4675  data: 0.0938  max mem: 17067
+Test:  [20/79]  eta: 0:00:24  loss: 0.3673 (0.3785)  acc1: 89.0625 (89.6949)  acc5: 99.2188 (99.1443)  time: 0.3786  data: 0.0045  max mem: 17067
+Test:  [30/79]  eta: 0:00:19  loss: 0.3703 (0.3812)  acc1: 89.0625 (89.2893)  acc5: 99.2188 (99.1431)  time: 0.3748  data: 0.0002  max mem: 17067
+Test:  [40/79]  eta: 0:00:15  loss: 0.3546 (0.3760)  acc1: 89.8438 (89.6151)  acc5: 99.2188 (99.1425)  time: 0.3766  data: 0.0020  max mem: 17067
+Test:  [50/79]  eta: 0:00:11  loss: 0.3546 (0.3715)  acc1: 91.4062 (90.0123)  acc5: 99.2188 (99.1115)  time: 0.3780  data: 0.0034  max mem: 17067
+Test:  [60/79]  eta: 0:00:07  loss: 0.3645 (0.3682)  acc1: 91.4062 (90.1767)  acc5: 99.2188 (99.1035)  time: 0.3797  data: 0.0054  max mem: 17067
+Test:  [70/79]  eta: 0:00:03  loss: 0.3423 (0.3648)  acc1: 90.6250 (90.3499)  acc5: 99.2188 (99.1087)  time: 0.3830  data: 0.0093  max mem: 17067
+Test:  [78/79]  eta: 0:00:00  loss: 0.3510 (0.3661)  acc1: 90.6250 (90.3600)  acc5: 99.2188 (99.1100)  time: 0.3674  data: 0.0096  max mem: 17067
+Test: Total time: 0:00:30 (0.3887 s / it)
+* Acc@1 90.360 Acc@5 99.110 loss 0.366
+Accuracy of the network on the 10000 test images: 90.4%
+Max accuracy: 90.36%
+log_dir: ./results

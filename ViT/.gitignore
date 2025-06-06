@@ -2,3 +2,4 @@ pretrained/*
 results/*
 .ipynb_checkpoints
 __pycache__
+result_*
