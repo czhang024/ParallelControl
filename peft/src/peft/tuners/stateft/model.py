@@ -133,7 +133,7 @@ class StateFTModel(BaseTuner):
         meta = torch.device("meta")
         # dispatch to correct device
         for name, module in new_module.named_modules():
-            if self.prefix in name:
+            if 'stateft' in name:
                 if not any(p.device == meta for p in module.parameters()):
                     module.to(device)
 

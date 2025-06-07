@@ -235,7 +235,6 @@ def main():
             token=True if model_args.token else None,
             ignore_mismatched_sizes=model_args.ignore_mismatched_sizes,
         )
-    # print([key for key, _ in model.named_modules()])
     if model_args.peft_method == "control":
         print("Using Control Method")
 
@@ -247,14 +246,12 @@ def main():
         peft_config = StateFTLoraConfig(
             task_type="SEQ_CLS",
             target_modules=['attention'],
-            # exclude_modules='attention\..*'
             in_features=config.hidden_size,
             out_features=config.hidden_size,
             r=training_args.control_rank,
             lora_alpha=training_args.control_alpha,
             lora_dropout=training_args.lora_dropout,
-
-            # modules_to_save=["classifier", "score"], #["query", "value"]
+            modules_to_save=["classifier", "score"], #["query", "value"]
         )
         model = get_peft_model(model, peft_config) # Add lora or dora to model
         model.print_trainable_parameters()

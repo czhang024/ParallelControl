@@ -12,7 +12,7 @@ from datasets import load_dataset, load_from_disk
 from arguments import DataTrainingArguments, ModelArguments, TrainingArguments
 from constants import DEFAULT_PAD_TOKEN, task_to_keys
 from train_utils import train_model
-from peft import LoraConfig, get_peft_model
+from peft import LoraConfig, get_peft_model, StateFTLoraConfig
 from transformers import (AutoConfig, AutoModelForSequenceClassification,
                           AutoTokenizer, DataCollatorWithPadding,
                           EvalPrediction, HfArgumentParser, LlamaTokenizer,
@@ -251,29 +251,40 @@ def main():
     )
     model = prepare_model_for_kbit_training(model)
 
-
     if model_args.peft_method == "control":
         print("Using Control Method")
-        from model import ControlledRobertaLayer
-        def change_module(source_module, target_module): #change the children of target_module to be the ones has same name as source_module
-            source_children = {n:m for n,m in source_module.named_children()}
-            target_children = {n:m for n,m in target_module.named_children()}
-            for n1 in source_children:
-                if n1 in target_children:
-                    target_module._modules[n1] = deepcopy(source_module._modules[n1])
-                    change_module(source_children[n1], target_children[n1])
+        # from model import ControlledRobertaLayer
+        # def change_module(source_module, target_module): #change the children of target_module to be the ones has same name as source_module
+        #     source_children = {n:m for n,m in source_module.named_children()}
+        #     target_children = {n:m for n,m in target_module.named_children()}
+        #     for n1 in source_children:
+        #         if n1 in target_children:
+        #             target_module._modules[n1] = deepcopy(source_module._modules[n1])
+        #             change_module(source_children[n1], target_children[n1])
 
-        for i in range(len(model.roberta.encoder.layer)):
-            original_layer = deepcopy(model.roberta.encoder.layer[i])
-            model.roberta.encoder.layer[i] = ControlledRobertaLayer(config=config, training_args=training_args)
-            model.roberta.encoder.layer[i] = model.roberta.encoder.layer[i].to("cuda")
-            change_module(original_layer, model.roberta.encoder.layer[i])
-            model.roberta.encoder.layer[i].reset_control_parameters()
-            del original_layer
-            gc.collect()
-            torch.cuda.empty_cache()
-        print(model)
+        # for i in range(len(model.roberta.encoder.layer)):
+        #     original_layer = deepcopy(model.roberta.encoder.layer[i])
+        #     model.roberta.encoder.layer[i] = ControlledRobertaLayer(config=config, training_args=training_args)
+        #     model.roberta.encoder.layer[i] = model.roberta.encoder.layer[i].to("cuda")
+        #     change_module(original_layer, model.roberta.encoder.layer[i])
+        #     model.roberta.encoder.layer[i].reset_control_parameters()
+        #     del original_layer
+        #     gc.collect()
+        #     torch.cuda.empty_cache()
+        # print(model)
 
+        peft_config = StateFTLoraConfig(
+            task_type="SEQ_CLS",
+            target_modules=['attention'],
+            in_features=config.hidden_size,
+            out_features=config.hidden_size,
+            r=training_args.control_rank,
+            lora_alpha=training_args.control_alpha,
+            lora_dropout=training_args.lora_dropout,
+            modules_to_save=["classifier", "score"], #["query", "value"]
+        )
+        model = get_peft_model(model, peft_config) # Add lora or dora to model
+        model.print_trainable_parameters()
 
     elif model_args.peft_method in ["dora", "lora"]:
         print("Using Nested Method like DoRA or LoRA")
@@ -296,8 +307,7 @@ def main():
         model.print_trainable_parameters()
     else:
         raise ValueError("None of the conditions were satisfied. Please check the peft_method name.")
-
-
+    
     print(task_to_keys)
     sentence1_key, sentence2_key = task_to_keys[data_args.task_name]
     if data_args.pad_to_max_length:
@@ -422,9 +432,9 @@ def main():
         data_collator = DataCollatorWithPadding(tokenizer, pad_to_multiple_of=8)
     else:
         data_collator = None
-    for name,param in model.named_parameters():
-        if not any(key in name for key in ["lora","control","classifier"]):
-            param.requires_grad = False
+    # for name,param in model.named_parameters():
+    #     if not any(key in name for key in ["lora","control","classifier"]):
+    #         param.requires_grad = False
 
     for name,param in model.named_parameters():
         if param.requires_grad == True:
