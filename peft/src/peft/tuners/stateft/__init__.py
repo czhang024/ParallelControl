@@ -21,4 +21,5 @@ from .model import StateFTModel, StateFTLoraModel
 
 __all__ = ["StateFTConfig", "StateFTLoraConfig", "StateFTLayer", "StateFTLoraLayer", "StateFTModel", "StateFTLoraModel"]
 
-register_peft_method(name="stateft", model_cls=StateFTModel, config_cls=StateFTConfig)
+# register_peft_method(name="stateft", model_cls=StateFTModel, config_cls=StateFTConfig)
+register_peft_method(name="stateft_lora", model_cls=StateFTLoraModel, config_cls=StateFTLoraConfig)

@@ -95,15 +95,15 @@ class StateFTConfig(PeftConfig):
             "This should target the `nn.ModuleList` of the model, which is often called `'layers'` or `'h'`."
         },
     )
-    in_features_pattern: Optional[Union[list[str], str]] = field(
-        default=None,
+    in_features_pattern: Optional[dict] = field(
+        default_factory=dict,
         metadata={
             "help": "The mapping from layer names or regexp expression to ranks which are different from the default rank"
             "specified by `in_features`. For example, `{'^model.decoder.layers.0.mlp.down_proj': 4096}`."
         },
     )
-    out_features_pattern: Optional[Union[list[str], str]] = field(
-        default=None,
+    out_features_pattern: Optional[dict] = field(
+        default_factory=dict,
         metadata={
             "help": "The mapping from layer names or regexp expression to alphas which are different from the default alpha"
             "specified by `out_features`. For example, `{'^model.decoder.layers.0.mlp.up_proj': 4096}`."
@@ -127,13 +127,14 @@ class StateFTConfig(PeftConfig):
         self.exclude_modules = (
             set(self.exclude_modules) if isinstance(self.exclude_modules, list) else self.exclude_modules
         )
-        # if target_modules is a regex expression, then layers_to_transform should be None
+         # if target_modules is a regex expression, then layers_to_transform should be None
         if isinstance(self.target_modules, str) and self.layers_to_transform is not None:
             raise ValueError("`layers_to_transform` cannot be used when `target_modules` is a str.")
 
         # if target_modules is a regex expression, then layers_pattern should be None
         if isinstance(self.target_modules, str) and self.layers_pattern is not None:
             raise ValueError("`layers_pattern` cannot be used when `target_modules` is a str.")
+
         # check for layers_to_transform and layers_pattern
         if self.layers_pattern and not self.layers_to_transform:
             raise ValueError("When `layers_pattern` is specified, `layers_to_transform` must also be specified. ")
@@ -149,8 +150,12 @@ class StateFTLoraConfig(StateFTConfig):
             LoRA rank.
         lora_alpha (`int`):
             The alpha parameter for LoRA scaling.
-        rank_dropout (`float`):
-            The dropout probability for rank dimension during training.
+        lora_dropout (`float`):
+            The dropout probability for Lora layers.
+        use_rslora (`bool`):
+            When set to True, uses <a href='https://doi.org/10.48550/arXiv.2312.03732'>Rank-Stabilized LoRA</a> which
+            sets the adapter scaling factor to `lora_alpha/math.sqrt(r)`, since it was proven to work better.
+            Otherwise, it will use the original default value of `lora_alpha/r`.
         target_modules (`Optional[Union[List[str], str]]`):
             The names of the modules to apply the adapter to. If this is specified, only the modules with the specified
             names will be replaced. When passing a string, a regex match will be performed. When passing a list of
@@ -182,6 +187,18 @@ class StateFTLoraConfig(StateFTConfig):
 
     r: int = field(default=8, metadata={"help": "LoRA rank"})
     lora_alpha: int = field(default=8, metadata={"help": "LoRA alpha"})
+    lora_dropout: float = field(default=0.0, metadata={"help": "Lora dropout"})
+    use_rslora: bool = field(
+        default=False,
+        metadata={
+            "help": (
+                "When set to True, uses <a href='https://doi.org/10.48550/arXiv.2312.03732'>Rank-Stabilized LoRA</a>"
+                " which sets the adapter scaling factor to `lora_alpha/math.sqrt(r)`, since it"
+                " was proven to work better. Otherwise, it will use the original default"
+                " value of `lora_alpha/r`."
+            )
+        },
+    )
     rank_pattern: Optional[dict] = field(
         default_factory=dict,
         metadata={
@@ -221,6 +238,7 @@ class StateFTLoraConfig(StateFTConfig):
 
     def __post_init__(self):
         super().__post_init__()
+        self.peft_type = PeftType.STATEFT_LORA
         if self.lora_bias:
             if self.init_weights not in (True, False):
                 raise ValueError(

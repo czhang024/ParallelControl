@@ -26,11 +26,13 @@ from transformers.pytorch_utils import Conv1D
 
 from peft.tuners.tuners_utils import BaseTuner, BaseTunerLayer, check_target_module_exists
 from peft.utils import (
-    TRANSFORMERS_MODELS_TO_STATEFT_TARGET_MODULES_MAPPING,
+    # TRANSFORMERS_MODELS_TO_STATEFT_TARGET_MODULES_MAPPING,
     ModulesToSaveWrapper,
     _get_submodules,
 )
 from peft.utils.other import get_pattern_key
+
+from peft.mapping import PEFT_TYPE_TO_TUNER_MAPPING
 
 from .config import StateFTConfig, StateFTLoraConfig
 from .layer import StateFTLayer, StateFTLoraLayer
@@ -57,7 +59,7 @@ class StateFTModel(BaseTuner):
         - **peft_config** ([`StateFTConfig`]): The configuration of the StateFT model.
     """
 
-    prefix: str = "StateFT_"
+    prefix: str = "stateft_"
 
     def __init__(self, model, config, adapter_name, low_cpu_mem_usage: bool = False) -> None:
         super().__init__(model, config, adapter_name, low_cpu_mem_usage=low_cpu_mem_usage)
@@ -75,6 +77,11 @@ class StateFTModel(BaseTuner):
             raise ValueError(
                 f"{self.__class__.__name__} supports only 1 adapter with bias. When using multiple adapters, "
                 "set bias to 'none' for all adapters."
+            )
+        if config.in_features is None or config.out_features is None:
+            raise ValueError(
+                f"Please specify `in_features` and `out_features` in the config. "
+                f"Got in_features: {config.in_features}, out_features: {config.out_features}."
             )
         if config.in_features <= 0:
             raise ValueError(f"in_features should be greater than 0, got {config.in_features}.")
@@ -132,24 +139,24 @@ class StateFTModel(BaseTuner):
 
     def _mark_only_adapters_as_trainable(self, model: torch.nn.Module) -> None:
         for n, p in model.named_parameters():
-            if self.prefix not in n:
+            if 'stateft' not in n:
                 p.requires_grad = False
 
-        for active_adapter in self.active_adapters:
-            bias = self.peft_config[active_adapter].bias
-            if bias == "none":
-                continue
+        # for active_adapter in self.active_adapters:
+        #     bias = self.peft_config[active_adapter].bias
+        #     if bias == "none":
+        #         continue
 
-            if bias == "all":
-                for n, p in model.named_parameters():
-                    if "bias" in n:
-                        p.requires_grad = True
-            elif bias == "stateft_only":
-                for m in model.modules():
-                    if isinstance(m, StateFTLayer) and hasattr(m, "bias") and m.bias is not None:
-                        m.bias.requires_grad = True
-            else:
-                raise NotImplementedError(f"Requested bias: {bias}, is not implemented.")
+        #     if bias == "all":
+        #         for n, p in model.named_parameters():
+        #             if "bias" in n:
+        #                 p.requires_grad = True
+        #     elif bias == "stateft_only":
+        #         for m in model.modules():
+        #             if isinstance(m, StateFTLayer) and hasattr(m, "bias") and m.bias is not None:
+        #                 m.bias.requires_grad = True
+        #     else:
+        #         raise NotImplementedError(f"Requested bias: {bias}, is not implemented.")
 
     @staticmethod
     def _create_new_module(StateFT_config, adapter_name, target, **kwargs):
@@ -327,7 +334,7 @@ class StateFTLoraModel(StateFTModel):
         - **peft_config** ([`StateFTLoraConfig`]): The configuration of the StateFT model.
     """
 
-    prefix: str = "StateFT_"
+    prefix: str = "stateft_lora_"
 
     def __init__(self, model, config, adapter_name, low_cpu_mem_usage: bool = False) -> None:
         super().__init__(model, config, adapter_name, low_cpu_mem_usage=low_cpu_mem_usage)
@@ -339,7 +346,6 @@ class StateFTLoraModel(StateFTModel):
 
         """
         super()._check_new_adapter_config(config)
-
         if config.lora_alpha <= 0:
             raise ValueError(f"lora_alpha should be greater than 0, got {config.lora_alpha}.")
         if config.r <= 0:
@@ -375,8 +381,9 @@ class StateFTLoraModel(StateFTModel):
             'out_features': StateFTLora_config.out_features,
             "r": r,
             "lora_alpha": alpha,
+            "lora_dropout": StateFTLora_config.lora_dropout,
             "use_rslora": StateFTLora_config.use_rslora,
-            "lora_bias": StateFTLora_config.use_lora_bias,
+            "lora_bias": StateFTLora_config.lora_bias,
         }
         kwargs["bias"] = bias
         if isinstance(target, StateFTLayer):

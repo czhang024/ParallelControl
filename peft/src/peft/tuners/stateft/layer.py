@@ -30,7 +30,7 @@ from peft.utils.other import transpose
 
 class StateFTLayer(BaseTunerLayer):
     # All names of layers that may contain (trainable) adapter weights
-    adapter_layer_names = ("StateFT",)
+    adapter_layer_names = ("stateft",)
     # All names of other parameters that may contain adapter-related parameters
     other_param_names = ()
 
@@ -38,11 +38,10 @@ class StateFTLayer(BaseTunerLayer):
         self.base_layer = base_layer
         self.input_shape = None
         self.output_shape = None
-        self.StateFT = None
+        self.stateft = nn.ModuleDict()
         # Mark the weight as unmerged
         self._disable_adapters = False
         self.kwargs = kwargs
-        self.merged = False # StateFT does not support merging
 
         base_layer = self.get_base_layer()
 
@@ -56,7 +55,7 @@ class StateFTLayer(BaseTunerLayer):
         assert isinstance(adapter_layer, nn.Module), (
             f"adapter_layer should be an instance of nn.Module, but got {type(adapter_layer)}"
         )   
-        self.StateFT[adapter_name] = adapter_layer
+        self.stateft[adapter_name] = adapter_layer
 
         if init_weights:
             self.reset_parameters(adapter_name)
@@ -79,9 +78,9 @@ class StateFTLayer(BaseTunerLayer):
         else:
             result = self.base_layer(x, *args, **kwargs)
             for active_adapter in self.active_adapters:
-                if active_adapter not in self.StateFT.keys():
+                if active_adapter not in self.stateft.keys():
                     continue
-                result = result + self.StateFT[active_adapter](x, *args, **kwargs).to(result.dtype)
+                result = result + self.stateft[active_adapter](x, *args, **kwargs).to(result.dtype)
 
         result = result.to(previous_dtype)
         return result
@@ -205,8 +204,12 @@ class LoRAsideLayer(nn.Module):
         result = lora_B(lora_A(dropout(x.to(lora_A.weight.dtype)))) * scaling
 
         return result
+    
+    def __repr__(self) -> str:
+        rep = super().__repr__()
+        return "StateFT." + rep
 
-class StateFTLoraLayer(nn.Module, StateFTLayer):
+class StateFTLoraLayer(nn.Module,StateFTLayer):
     # StateFT implemented as a LoRA-like layer
 
     def __init__(
@@ -227,6 +230,8 @@ class StateFTLoraLayer(nn.Module, StateFTLayer):
         super().__init__()
         StateFTLayer.__init__(self, base_layer, **kwargs)
         self._active_adapter = adapter_name
+
+        self.init_weights = init_weights
         self.kwargs = kwargs
 
         self.update_layer(
@@ -236,7 +241,7 @@ class StateFTLoraLayer(nn.Module, StateFTLayer):
             r=r,
             lora_alpha=lora_alpha,
             lora_dropout=lora_dropout,
-            init_lora_weights=init_weights,
+            init_weights=init_weights,
             use_rslora=use_rslora,
             lora_bias=lora_bias,
         )
@@ -263,7 +268,7 @@ class StateFTLoraLayer(nn.Module, StateFTLayer):
             use_rslora=use_rslora,
             lora_bias=lora_bias,
         )
-        super().base_update_layer(adapter_name, lora_layer, False)
+        self.base_update_layer(adapter_name, lora_layer, False)
 
     def merge(self, safe_merge: bool = False, adapter_names: Optional[List[str]] = None) -> None:
         """
@@ -286,8 +291,20 @@ class StateFTLoraLayer(nn.Module, StateFTLayer):
         """
         raise ValueError("StateFTLora does not support merging")
 
-    
-
     def __repr__(self) -> str:
         rep = super().__repr__()
-        return "StateFT." + rep
+        return "StateFTLora." + rep
+
+    def forward(self, x: torch.Tensor, *args: Any, **kwargs: Any) -> torch.Tensor:
+        return StateFTLayer.forward(self, x, *args, **kwargs)
+
+    @torch.no_grad()
+    def reset_parameters(self, adapter_name):
+        """
+        Reset the parameters of the adapter layer.
+        """
+        if adapter_name not in self.stateft:
+            raise ValueError(f"Adapter {adapter_name} not found in {self.__class__.__name__}")
+
+        init_lora_weights = self.init_weights if self.init_weights else True
+        self.stateft[adapter_name].reset_lora_parameters(init_lora_weights)

@@ -235,21 +235,8 @@ def main():
             token=True if model_args.token else None,
             ignore_mismatched_sizes=model_args.ignore_mismatched_sizes,
         )
-
     if model_args.peft_method == "control":
         print("Using Control Method")
-        # from model import ControlledRobertaForSequenceClassification
-        # model = ControlledRobertaForSequenceClassification.from_pretrained(
-        #     model_args.model_name_or_path, 
-        #     config=config,
-        #     training_args=training_args, 
-        #     torch_dtype=torch_dtype,
-        #     cache_dir=model_args.cache_dir,
-        #     revision=model_args.model_revision,
-        #     token=True if model_args.token else None,
-        #     ignore_mismatched_sizes=model_args.ignore_mismatched_sizes,
-        # )
-        
 
         target_modules = training_args.target_modules
         assert target_modules is not None
@@ -259,13 +246,14 @@ def main():
         peft_config = StateFTLoraConfig(
             task_type="SEQ_CLS",
             target_modules=target_modules,
+            in_features=config.hidden_size,
+            out_features=config.hidden_size,
             r=training_args.control_rank,
             lora_alpha=training_args.control_alpha,
             lora_dropout=training_args.lora_dropout,
 
-            modules_to_save=["classifier", "score"], #["query", "value"]
+            # modules_to_save=["classifier", "score"], #["query", "value"]
         )
-        
         model = get_peft_model(model, peft_config) # Add lora or dora to model
         model.print_trainable_parameters()
 
@@ -294,7 +282,6 @@ def main():
         model.print_trainable_parameters()
     else:
         raise ValueError("None of the conditions were satisfied. Please check the peft_method name.")
-
 
     print(task_to_keys)
     sentence1_key, sentence2_key = task_to_keys[data_args.task_name]
@@ -420,9 +407,9 @@ def main():
         data_collator = DataCollatorWithPadding(tokenizer, pad_to_multiple_of=8)
     else:
         data_collator = None
-    for name,param in model.named_parameters():
-        if not any(key in name for key in ["lora","control","classifier"]):
-            param.requires_grad = False
+    # for name,param in model.named_parameters():
+    #     if not any(key in name for key in ["lora","stateft","classifier"]):
+    #         param.requires_grad = False
 
     for name,param in model.named_parameters():
         if param.requires_grad == True:
