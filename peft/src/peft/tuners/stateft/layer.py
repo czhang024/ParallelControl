@@ -77,12 +77,20 @@ class StateFTLayer(BaseTunerLayer):
             result = self.base_layer(x, *args, **kwargs)
         else:
             result = self.base_layer(x, *args, **kwargs)
+            if isinstance(result, tuple):
+                output = result[0]
+            else:
+                output = result
             for active_adapter in self.active_adapters:
                 if active_adapter not in self.stateft.keys():
                     continue
-                result = result + self.stateft[active_adapter](x, *args, **kwargs).to(result.dtype)
+                output = output + self.stateft[active_adapter](x, *args, **kwargs).to(output.dtype)
 
-        result = result.to(previous_dtype)
+        if isinstance(result, tuple):
+            # If the base layer returns a tuple, we need to return the same structure
+            result = (output,) + result[1:]
+        else:
+            result = output
         return result
 
 
