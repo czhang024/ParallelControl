@@ -12,7 +12,7 @@ from datasets import load_dataset, load_from_disk
 from arguments import DataTrainingArguments, ModelArguments, TrainingArguments
 from constants import DEFAULT_PAD_TOKEN, task_to_keys
 from train_utils import train_model
-from peft import LoraConfig, get_peft_model
+from peft import LoraConfig, get_peft_model, StateFTLoraConfig
 from transformers import (AutoConfig, AutoModelForSequenceClassification,
                           AutoTokenizer, DataCollatorWithPadding,
                           EvalPrediction, HfArgumentParser, LlamaTokenizer,
@@ -225,24 +225,7 @@ def main():
     model_args.ignore_mismatched_sizes = True
 
     torch.manual_seed(training_args.seed)
-    if model_args.peft_method == "control":
-        print("Using Control Method")
-        from model import ControlledRobertaForSequenceClassification
-        model = ControlledRobertaForSequenceClassification.from_pretrained(
-            model_args.model_name_or_path, 
-            config=config,
-            training_args=training_args, 
-            torch_dtype=torch_dtype,
-            cache_dir=model_args.cache_dir,
-            revision=model_args.model_revision,
-            token=True if model_args.token else None,
-            ignore_mismatched_sizes=model_args.ignore_mismatched_sizes,
-        )
-
-
-    elif model_args.peft_method in ["dora", "lora"]:
-        print("Using Nested Method like DoRA or LoRA")
-        model = AutoModelForSequenceClassification.from_pretrained(
+    model = AutoModelForSequenceClassification.from_pretrained(
             model_args.model_name_or_path,
             from_tf=bool(".ckpt" in model_args.model_name_or_path),
             torch_dtype=torch_dtype,
@@ -252,6 +235,43 @@ def main():
             token=True if model_args.token else None,
             ignore_mismatched_sizes=model_args.ignore_mismatched_sizes,
         )
+
+    if model_args.peft_method == "control":
+        print("Using Control Method")
+        # from model import ControlledRobertaForSequenceClassification
+        # model = ControlledRobertaForSequenceClassification.from_pretrained(
+        #     model_args.model_name_or_path, 
+        #     config=config,
+        #     training_args=training_args, 
+        #     torch_dtype=torch_dtype,
+        #     cache_dir=model_args.cache_dir,
+        #     revision=model_args.model_revision,
+        #     token=True if model_args.token else None,
+        #     ignore_mismatched_sizes=model_args.ignore_mismatched_sizes,
+        # )
+        
+
+        target_modules = training_args.target_modules
+        assert target_modules is not None
+        target_modules = target_modules.split(",")
+        target_modules = [target_module.strip() for target_module in target_modules]
+
+        peft_config = StateFTLoraConfig(
+            task_type="SEQ_CLS",
+            target_modules=target_modules,
+            r=training_args.control_rank,
+            lora_alpha=training_args.control_alpha,
+            lora_dropout=training_args.lora_dropout,
+
+            modules_to_save=["classifier", "score"], #["query", "value"]
+        )
+        
+        model = get_peft_model(model, peft_config) # Add lora or dora to model
+        model.print_trainable_parameters()
+
+    elif model_args.peft_method in ["dora", "lora"]:
+        print("Using Nested Method like DoRA or LoRA")
+        
         target_modules = training_args.target_modules
         assert target_modules is not None
         target_modules = target_modules.split(",")
