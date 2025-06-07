@@ -71,6 +71,9 @@ LoRA with Parallel Control <br>
 # Clone the repository
 git clone https://github.com/czhang024/ParallelControl
 
+# Install custom peft
+pip install -e peft
+
 # 📂 Navigate to your desired experiment folder
 cd RoBERTa  # or ViT, LlaMA, QControl
 ```
