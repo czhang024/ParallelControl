@@ -32,8 +32,6 @@ from peft.utils import (
 )
 from peft.utils.other import get_pattern_key
 
-from peft.mapping import PEFT_TYPE_TO_TUNER_MAPPING
-
 from .config import StateFTConfig, StateFTLoraConfig
 from .layer import StateFTLayer, StateFTLoraLayer
 
@@ -142,22 +140,6 @@ class StateFTModel(BaseTuner):
             if 'stateft' not in n:
                 p.requires_grad = False
 
-        # for active_adapter in self.active_adapters:
-        #     bias = self.peft_config[active_adapter].bias
-        #     if bias == "none":
-        #         continue
-
-        #     if bias == "all":
-        #         for n, p in model.named_parameters():
-        #             if "bias" in n:
-        #                 p.requires_grad = True
-        #     elif bias == "stateft_only":
-        #         for m in model.modules():
-        #             if isinstance(m, StateFTLayer) and hasattr(m, "bias") and m.bias is not None:
-        #                 m.bias.requires_grad = True
-        #     else:
-        #         raise NotImplementedError(f"Requested bias: {bias}, is not implemented.")
-
     @staticmethod
     def _create_new_module(StateFT_config, adapter_name, target, **kwargs):
         raise NotImplementedError(
@@ -200,14 +182,6 @@ class StateFTModel(BaseTuner):
 
         When disabling all adapters, the model output corresponds to the output of the base model.
         """
-        for active_adapter in self.active_adapters:
-            val = self.peft_config[active_adapter].bias
-            if val != "none":
-                msg = (
-                    f"Careful, disabling adapter layers with bias configured to be '{val}' does not produce the same "
-                    "output as the the base model would without adaption."
-                )
-                warnings.warn(msg)
         self._set_adapter_layers(enabled=False)
 
     def set_adapter(self, adapter_name: str | list[str]) -> None:
@@ -218,9 +192,6 @@ class StateFTModel(BaseTuner):
         """
         for module in self.model.modules():
             if isinstance(module, StateFTLayer):
-                # if module.merged:
-                #     warnings.warn("Adapter cannot be set when the model is merged. Unmerging the model first.")
-                #     module.unmerge()
                 module.set_adapter(adapter_name)
         self.active_adapter = adapter_name
 
@@ -228,11 +199,6 @@ class StateFTModel(BaseTuner):
     def _prepare_adapter_config(peft_config, model_config):
         if peft_config.target_modules is None:
             raise ValueError("Please specify `target_modules` in `peft_config`")
-            # if model_config["model_type"] not in TRANSFORMERS_MODELS_TO_STATEFT_TARGET_MODULES_MAPPING:
-            #     raise ValueError("Please specify `target_modules` in `peft_config`")
-            # peft_config.target_modules = set(
-            #     TRANSFORMERS_MODELS_TO_STATEFT_TARGET_MODULES_MAPPING[model_config["model_type"]]
-            # )
         return peft_config
 
     def _unload_and_optionally_merge(
@@ -288,18 +254,7 @@ class StateFTModel(BaseTuner):
         self, progressbar: bool = False, safe_merge: bool = False, adapter_names: Optional[list[str]] = None
     ) -> torch.nn.Module:
         r"""
-        This method merges the StateFT layers into the base model. This is needed if someone wants to use the base
-        model as a standalone model.
-
-        Args:
-            progressbar (`bool`):
-                whether to show a progressbar indicating the unload and merge process
-            safe_merge (`bool`):
-                whether to activate the safe merging check to check if there is any potential Nan in the adapter
-                weights
-            adapter_names (`List[str]`, *optional*):
-                The list of adapter names that should be merged. If None, all active adapters will be merged. Defaults
-                to `None`.
+        Merging is not supported for StateFTModel. 
         """
         raise ValueError(
             "Merging is not supported for StateFTModel. "

@@ -42,6 +42,7 @@ class PeftType(str, enum.Enum):
     - BONE
     - STATEFT
     - STATEFT_LORA
+    - STATEFT_LORA_V2
     """
 
     PROMPT_TUNING = "PROMPT_TUNING"
@@ -68,6 +69,7 @@ class PeftType(str, enum.Enum):
     TRAINABLE_TOKENS = "TRAINABLE_TOKENS"
     STATEFT = "STATEFT"
     STATEFT_LORA = "STATEFT_LORA"
+    STATEFT_LORA_V2 = "STATEFT_LORA_V2"
 
 class TaskType(str, enum.Enum):
     """

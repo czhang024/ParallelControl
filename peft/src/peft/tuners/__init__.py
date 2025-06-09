@@ -43,7 +43,7 @@ from .trainable_tokens import TrainableTokensConfig, TrainableTokensModel
 from .vblora import VBLoRAConfig, VBLoRAModel
 from .vera import VeraConfig, VeraModel
 from .xlora import XLoraConfig, XLoraModel
-from .stateft import StateFTConfig, StateFTModel, StateFTLoraConfig, StateFTLoraModel
+from .stateft import StateFTConfig, StateFTModel, StateFTLoraConfig, StateFTLoraModel, StateFTLorav2Config, ParallelControlv2Model
 
 __all__ = [
     "AdaLoraConfig",
@@ -93,6 +93,8 @@ __all__ = [
     "StateFTModel",
     "StateFTLoraConfig",
     "StateFTLoraModel",
+    "StateFTLorav2Config",
+    "ParallelControlv2Model",
     "TrainableTokensConfig",
     "TrainableTokensModel",
     "VBLoRAConfig",

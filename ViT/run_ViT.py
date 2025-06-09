@@ -21,7 +21,7 @@ from engine_finetune import train_one_epoch, evaluate
 import models.vit_image as vit_image
 from models.vit_image import vit_base_patch16, _load_weights
 import warnings
-from peft import get_peft_model, LoraConfig
+from peft import get_peft_model, LoraConfig, StateFTLoraConfig
 
 warnings.filterwarnings('ignore')
 
@@ -141,11 +141,18 @@ def main():
 
     if args.peft_method == "control":
         print("Using Control Method")            
-        for name, p in model.named_parameters():
-            if "controller" in name:
-                p.requires_grad = True
-            else:
-                p.requires_grad = False
+        # for name, p in model.named_parameters():
+        #     if "controller" in name:
+        #         p.requires_grad = True
+        #     else:
+        #         p.requires_grad = False
+        lora_config = StateFTLoraConfig(
+            r=args.lora_rank,                                   
+            use_dora= (args.peft_method=="dora"),          # Use DORA if specified 
+            lora_alpha=args.lora_alpha,                         
+            target_modules=["blocks.0"]         
+        )
+        model = get_peft_model(model, lora_config)
     elif args.peft_method in ["dora", "lora"]:
         print("Using Nested Method like DoRA or LoRA")
         lora_config = LoraConfig(

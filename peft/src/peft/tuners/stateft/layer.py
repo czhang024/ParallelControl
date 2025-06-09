@@ -43,8 +43,6 @@ class StateFTLayer(BaseTunerLayer):
         self._disable_adapters = False
         self.kwargs = kwargs
 
-        base_layer = self.get_base_layer()
-
     def update_layer(self, adapter_name, *args, **kwargs):
         raise NotImplementedError(
             f"update_layer is not implemented for {self.__class__.__name__}. "
