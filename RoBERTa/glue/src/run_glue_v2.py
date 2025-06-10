@@ -13,6 +13,7 @@ from arguments import DataTrainingArguments, ModelArguments, TrainingArguments
 from constants import DEFAULT_PAD_TOKEN, task_to_keys
 from train_utils import train_model
 from peft import LoraConfig, get_peft_model, StateFTLorav2Config
+from peft.helpers import update_signature
 from transformers import (AutoConfig, AutoModelForSequenceClassification,
                           AutoTokenizer, DataCollatorWithPadding,
                           EvalPrediction, HfArgumentParser, LlamaTokenizer,
@@ -236,15 +237,6 @@ def main():
             ignore_mismatched_sizes=model_args.ignore_mismatched_sizes,
         )
 
-    from peft.mapping import (
-        PEFT_TYPE_TO_TUNER_MAPPING,
-        PEFT_TYPE_TO_CONFIG_MAPPING,
-        PEFT_TYPE_TO_PREFIX_MAPPING,
-    )
-
-    print(PEFT_TYPE_TO_TUNER_MAPPING)
-    print(PEFT_TYPE_TO_CONFIG_MAPPING)
-    print(PEFT_TYPE_TO_PREFIX_MAPPING)
     if model_args.peft_method == "control":
         print("Using Control Method")
 
@@ -265,6 +257,7 @@ def main():
         )
         model = get_peft_model(model, peft_config) # Add lora or dora to model
         model.print_trainable_parameters()
+        update_signature(model, method='forward')
 
     elif model_args.peft_method in ["dora", "lora"]:
         print("Using Nested Method like DoRA or LoRA")

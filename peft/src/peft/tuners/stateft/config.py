@@ -305,7 +305,7 @@ class StateFTv2Config(PeftConfig):
 
     def __post_init__(self):
         super().__post_init__()
-        self.peft_type = PeftType.STATEFT
+        self.peft_type = PeftType.STATEFTV2
         self.target_modules = (
             set(self.target_modules) if isinstance(self.target_modules, list) else self.target_modules
         )
@@ -376,7 +376,7 @@ class StateFTLorav2Config(StateFTv2Config):
 
     def __post_init__(self):
         super().__post_init__()
-        self.peft_type = PeftType.STATEFT_LORA
+        self.peft_type = PeftType.STATEFT_LORA_V2
         if self.lora_bias:
             if self.init_weights not in (True, False):
                 raise ValueError(

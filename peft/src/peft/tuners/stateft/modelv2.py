@@ -18,7 +18,7 @@ import warnings
 from dataclasses import asdict
 from enum import Enum
 from itertools import chain
-from typing import Optional, Any, Dict, List
+from typing import Optional, Any, Dict, List, Tuple
 
 import torch
 import torch.nn as nn
@@ -56,7 +56,7 @@ from types import MethodType
 
 
 
-def _remove_dag_hooks(model, edge=None, adapter_name: str = None):
+def _remove_dag_hooks(model, edge_name=None, adapter_name: str = None):
     """
     Remove dag hooks from the model.
     """
@@ -66,14 +66,14 @@ def _remove_dag_hooks(model, edge=None, adapter_name: str = None):
         warnings.warn("Model does not have DAG hooks. No hooks to remove.")
         return 
     
-    if edge is not None:
-        if edge not in model.dag_hook_handles:
-            warnings.warn(f"Edge {edge} not found in model dag_hook_handles. No hooks to remove.")
+    if edge_name is not None:
+        if edge_name not in model.dag_hook_handles:
+            warnings.warn(f"Edge {edge_name} not found in model dag_hook_handles. No hooks to remove.")
             return
-        handles = model.dag_hook_handles[edge]
+        handles = model.dag_hook_handles[edge_name]
         if adapter_name is not None:
             if adapter_name not in handles:
-                warnings.warn(f"Adapter {adapter_name} not found in edge {edge}. No hooks to remove.")
+                warnings.warn(f"Adapter {adapter_name} not found in edge {edge_name}. No hooks to remove.")
                 return
             handles = handles.pop(adapter_name,None)
             if isinstance(handles, (tuple, list)):
@@ -88,11 +88,11 @@ def _remove_dag_hooks(model, edge=None, adapter_name: str = None):
                         h.remove()
                 else:
                     handle.remove()
-            del model.dag_hook_handles[edge]
+            del model.dag_hook_handles[edge_name]
         if len(model.dag_hook_handles) == 0:
             model.has_dag_hooks = False
     else:
-        for edge, handles in model.dag_hook_handles.items():
+        for edge_name, handles in model.dag_hook_handles.items():
             if adapter_name is None:
                 for handle in handles:
                     if isinstance(handle, (tuple, list)):
@@ -115,7 +115,7 @@ def _remove_dag_hooks(model, edge=None, adapter_name: str = None):
 
 class BaseDAGControlModel(BaseTuner):
     # All names of layers that may contain (trainable) adapter weights
-    adapter_layer_names = ("stateft",)
+    adapter_layer_names = ("shortcut_module",)
     # All names of other parameters that may contain adapter-related parameters
     other_param_names = ()
 
@@ -130,8 +130,8 @@ class BaseDAGControlModel(BaseTuner):
         
         super().__init__(model, config, adapter_name, low_cpu_mem_usage=low_cpu_mem_usage)
         
-        from peft.helpers import update_signature
-        update_signature(self)
+        # from peft.helpers import update_signature
+        # update_signature(self)
 
     ########## BaseTuner ##########
     def _check_new_adapter_config(self, config: StateFTv2Config, edges: Dict=None, insert_nodes: Dict=None) -> None:
@@ -153,13 +153,15 @@ class BaseDAGControlModel(BaseTuner):
         #TODO: check if the target modules exist in the model
         assert edges is not None or insert_nodes is not None, "Either edges or insert_nodes must be provided."
         submodules= dict(self.model.named_modules())
-        for (head, tail), adapter_module in edges.items():
-            assert head in submodules, f"Head {head} not found in model submodules."
-            assert tail in submodules, f"Tail {tail} not found in model submodules."
-            assert isinstance(adapter_module, nn.Module), f"Submodule {adapter_module} is not a valid nn.Module."
-        for name, adapter_module in insert_nodes.items():
-            assert name in submodules, f"Insert node {name} not found in model submodules."
-            assert isinstance(adapter_module, nn.Module), f"Submodule {adapter_module} is not a valid nn.Module."
+        if edges is not None:
+            for (head, tail), adapter_module in edges.items():
+                assert head in submodules, f"Head {head} not found in model submodules."
+                assert tail in submodules, f"Tail {tail} not found in model submodules."
+                assert isinstance(adapter_module, nn.Module), f"Submodule {adapter_module} is not a valid nn.Module."
+        if insert_nodes is not None:
+            for name, adapter_module in insert_nodes.items():
+                assert name in submodules, f"Insert node {name} not found in model submodules."
+                assert isinstance(adapter_module, nn.Module), f"Submodule {adapter_module} is not a valid nn.Module."
 
     @staticmethod
     def _check_target_module_exists(StateFTv2_config, key):
@@ -301,7 +303,7 @@ class BaseDAGControlModel(BaseTuner):
 
     def _mark_only_adapters_as_trainable(self, model: torch.nn.Module) -> None:
         for n, p in model.named_parameters():
-            if 'stateft' not in n:
+            if 'shortcut_module' not in n:
                 p.requires_grad = False
     
     def __getattr__(self, name: str):
@@ -354,7 +356,7 @@ class BaseDAGControlModel(BaseTuner):
         """
         self._set_adapter_layers(enabled=False)
 
-    def set_adapter(self, adapter_name: str | list[str]) -> None:
+    def set_adapter(self, adapter_names: str | list[str]) -> None:
         """Set the active adapter(s).
 
         Args:
@@ -362,15 +364,15 @@ class BaseDAGControlModel(BaseTuner):
         """
         if isinstance(adapter_names, str):
             adapter_names = [adapter_names]
-        for edge, adapter_modules in self.shortcut_modules.items():
+        for edge_name, adapter_modules in self.shortcut_modules.items():
             for _adapter_name,module in adapter_modules.items():
                 if _adapter_name in adapter_names:
-                    self.register_dag_hook(edge,module, adapter_name=_adapter_name)
+                    self.register_dag_hook(self.get_edge(edge_name), module, adapter_name=_adapter_name)
 
         for module in self.model.modules():
             if isinstance(module, BaseDAGControlModel):
-                module.set_adapter(adapter_name)
-        self.active_adapter = adapter_name
+                module.set_adapter(adapter_names)
+        self.active_adapter = adapter_names
 
     @staticmethod
     def _prepare_adapter_config(peft_config, model_config):
@@ -409,14 +411,14 @@ class BaseDAGControlModel(BaseTuner):
             del self.model.dag_hook_handles
         return self.model
 
-    def delete_adapter(self, adapter_name: str=None, edge=None) -> None:
+    def delete_adapter(self, adapter_name: str=None, edge_name=None) -> None:
         """
         Deletes an existing adapter.
 
         Args:
             adapter_name (str): Name of the adapter to be deleted.
         """
-        if edge is None:
+        if edge_name is None:
             if adapter_name not in list(self.peft_config.keys()):
                 warnings.warn(f"Adapter {adapter_name} does not exist")
             del self.peft_config[adapter_name]
@@ -428,7 +430,7 @@ class BaseDAGControlModel(BaseTuner):
             # we cannot use self.prefix as we want to include non-trainable StateFT parameters
             new_adapter = None
             self.model.remove_dag_hooks(adapter_name=adapter_name)
-            for edge, adapter_modules in self.shortcut_modules.items():
+            for edge_name, adapter_modules in self.shortcut_modules.items():
                 if adapter_name in adapter_modules:
                     del adapter_modules[adapter_name]
                 if new_adapter is None:
@@ -436,14 +438,14 @@ class BaseDAGControlModel(BaseTuner):
 
             self.active_adapter = new_adapter or []
         else:
-            if edge not in self.model.dag_hook_handles:
-                warnings.warn(f"Edge {edge} does not exist")
-            if adapter_name not in self.model.dag_hook_handles[edge]:
-                warnings.warn(f"Adapter {adapter_name} does not exist in edge {edge}")
-            self.model.remove_dag_hooks(edge=edge, adapter_name=adapter_name)
-            del self.shortcut_modules[edge][adapter_name]
-            if len(self.shortcut_modules[edge]) == 0:
-                del self.shortcut_modules[edge]
+            if edge_name not in self.model.dag_hook_handles:
+                warnings.warn(f"Edge {edge_name} does not exist")
+            if adapter_name not in self.model.dag_hook_handles[edge_name]:
+                warnings.warn(f"Adapter {adapter_name} does not exist in edge {edge_name}")
+            self.model.remove_dag_hooks(edge_name=edge_name, adapter_name=adapter_name)
+            del self.shortcut_modules[edge_name][adapter_name]
+            if len(self.shortcut_modules[edge_name]) == 0:
+                del self.shortcut_modules[edge_name]
 
     def merge_and_unload(
         self, progressbar: bool = False, safe_merge: bool = False, adapter_names: Optional[list[str]] = None
@@ -478,29 +480,62 @@ class BaseDAGControlModel(BaseTuner):
         # loop through all potential adapter layers and move them to the device of the base layer; be careful to only
         # move this specific adapter to the device, as the other adapters could be on different devices
         # see #1639
-        if adapter_name not in self.shortcut_modules[edge]:
+        edge_name = self.get_edge_name(edge)
+        if adapter_name not in self.shortcut_modules[edge_name]:
             raise ValueError(f"Adapter {adapter_name} not found in edge {edge}.")
-        if not any(p.device == meta for p in self.shortcut_modules[edge][adapter_name].parameters()):
+        if not any(p.device == meta for p in self.shortcut_modules[edge_name][adapter_name].parameters()):
             if p.dtype.is_floating_point or p.dtype.is_complex:
-                self.shortcut_modules[edge][adapter_name] = self.shortcut_modules[edge][adapter_name].to(device, dtype=p.dtype)
+                self.shortcut_modules[edge_name][adapter_name] = self.shortcut_modules[edge_name][adapter_name].to(device, dtype=p.dtype)
             else:
-                self.shortcut_modules[edge][adapter_name] = self.shortcut_modules[edge][adapter_name].to(device)
+                self.shortcut_modules[edge_name][adapter_name] = self.shortcut_modules[edge_name][adapter_name].to(device)
 
-        for adapter_layer_name in self.adapter_layer_names + self.other_param_names:
-            adapter_layer = getattr(self, adapter_layer_name, None)
-            if not isinstance(adapter_layer, (nn.ModuleDict, nn.ParameterDict)):
-                continue
-            if adapter_name not in adapter_layer:
-                continue
-            if any(p.device == meta for p in adapter_layer.parameters()):
-                continue
+        # for adapter_layer_name in self.adapter_layer_names + self.other_param_names:
+        #     adapter_layer = getattr(self, adapter_layer_name, None)
+        #     if not isinstance(adapter_layer, (nn.ModuleDict, nn.ParameterDict)) or adapter_layer_name == 'shortcut_module':
+        #         continue
+        #     if adapter_name not in adapter_layer:
+        #         continue
+        #     if any(p.device == meta for p in adapter_layer.parameters()):
+        #         continue
 
-            if p.dtype.is_floating_point or p.dtype.is_complex:
-                adapter_layer[adapter_name] = adapter_layer[adapter_name].to(device, dtype=p.dtype)
-            else:
-                adapter_layer[adapter_name] = adapter_layer[adapter_name].to(device)
+        #     if p.dtype.is_floating_point or p.dtype.is_complex:
+        #         adapter_layer[adapter_name] = adapter_layer[adapter_name].to(device, dtype=p.dtype)
+        #     else:
+        #         adapter_layer[adapter_name] = adapter_layer[adapter_name].to(device)
 
     ####### BaseDAGControlModel ########
+    def get_edge_name(self, edge: Tuple[str, str]|str) -> str:
+        """
+        Get the name of the edge in the DAG.
+
+        Args:
+            edge (tuple|str): A tuple of (head, tail) representing the edge in the DAG or a string representing the node name.
+        
+        Returns:
+            str: The name of the edge.
+        """
+        if isinstance(edge, tuple):
+            head = edge[0].replace('.', '-')
+            tail = edge[1].replace('.', '-')
+            return '-TO-'.join([head, tail])
+        else:
+            return edge.replace('.', '-')
+    def get_edge(self, edge_name: str) -> Tuple[str, str]|str:
+        """
+        Get the edge from the DAG by its name.
+
+        Args:
+            edge_name (str): The name of the edge in the DAG.
+        
+        Returns:
+            tuple|str: A tuple of (head, tail) representing the edge in the DAG or a string representing the node name.
+        """
+        if '-TO-' in edge_name:
+            head, tail = edge_name.split('-TO-')
+            return (head.replace('-', '.'), tail.replace('-', '.'))
+        else:
+            return edge_name.replace('-', '.')
+
     def build_edges(self, edges: Dict, insert_nodes: Dict = None, adapter_name: str = 'default'):
         """
         Build the additional edges in the DAG.
@@ -516,12 +551,12 @@ class BaseDAGControlModel(BaseTuner):
         """
         if hasattr(self.model, 'has_dag_hooks') and self.model.has_dag_hooks:
             raise ValueError("Model already has DAG hooks. Please remove them before adding new ones.")
-        self.edges = edges
+        # self.edges = edges
         submodules = dict(self.model.named_modules())
         if not hasattr(self.model, 'dag_hook_handles'):
             self.model.dag_hook_handles = defaultdict(dict)
         if not hasattr(self, 'shortcut_modules'):
-            self.shortcut_modules = defaultdict(nn.ModuleDict)
+            self.shortcut_modules = nn.ModuleDict()
         if not hasattr(self, 'shortcut_states'):
             self.shortcut_states = {}
         if edges is not None:
@@ -533,7 +568,7 @@ class BaseDAGControlModel(BaseTuner):
             for name, submodule in insert_nodes.items():
                 self.register_dag_hook(name, submodule, adapter_name=adapter_name)
                 self._move_adapter_to_device_of_base_layer(adapter_name, name)
-        self.shortcut_modules=nn.ModuleDict({k: v for k,v in self.shortcut_modules.items()})
+        # self.shortcut_modules=nn.ModuleDict({k: v for k,v in self.shortcut_modules.items()})
         self.model.has_dag_hooks = True
         self.model.remove_dag_hooks = MethodType(_remove_dag_hooks, self.model)
 
@@ -627,9 +662,11 @@ class BaseDAGControlModel(BaseTuner):
             tail = edge[1].replace('.', '-')
             edge_name = '-TO-'.join([head, tail])
             if edge_name in self.shortcut_modules and adapter_name in self.shortcut_modules[edge_name]:
-                self.model.remove_dag_hooks(edge=edge_name, adapter_name=adapter_name)
-            inhook = self.model.get_submodule(head).register_forward_pre_hook(self._head_hook_fn(adapter_module, tail))
-            outhook = self.model.get_submodule(tail).register_forward_hook(self._tail_hook_fn(adapter_module, tail))
+                self.model.remove_dag_hooks(edge_name=edge_name, adapter_name=adapter_name)
+            inhook = self.model.get_submodule(edge[0]).register_forward_pre_hook(self._head_hook_fn(adapter_module, tail))
+            outhook = self.model.get_submodule(edge[1]).register_forward_hook(self._tail_hook_fn(adapter_module, tail))
+            if edge_name not in self.shortcut_modules:
+                self.shortcut_modules[edge_name] = nn.ModuleDict()
             self.shortcut_modules[edge_name][adapter_name] = adapter_module
             self.model.dag_hook_handles[edge_name][adapter_name] = (inhook,outhook)
             if tail not in self.shortcut_states:
@@ -638,7 +675,9 @@ class BaseDAGControlModel(BaseTuner):
             nodehook=self.model.get_submodule(edge).register_forward_hook(self._insert_node_hook_fn(adapter_module))
             name = edge.replace('.', '-')
             if name in self.shortcut_modules and adapter_name in self.shortcut_modules[name]:
-                self.model.remove_dag_hooks(edge=name, adapter_name=adapter_name)
+                self.model.remove_dag_hooks(edge_name=name, adapter_name=adapter_name)
+            if name not in self.shortcut_modules:
+                self.shortcut_modules[name] = nn.ModuleDict()
             self.shortcut_modules[name].append(adapter_module)
             self.model.dag_hook_handles[name][adapter_name]=nodehook
             if name not in self.shortcut_states:
@@ -658,30 +697,30 @@ class ParallelControlModel(BaseDAGControlModel):
             lora_dropout (float): Dropout probability for the LoRA layers.
         """
         if edges is None:
-            edges = self.create_lora_edges(model, config)
+            edges = self.create_lora_edges(model, config[adapter_name])
         super(ParallelControlModel, self).__init__(model, config, adapter_name, low_cpu_mem_usage, edges=edges)
 
-    def _check_new_adapter_config(self, config: StateFTLorav2Config) -> None:
+    def _check_new_adapter_config(self, config: StateFTLorav2Config, edges: Dict=None, insert_nodes: Dict=None) -> None:
         """
         A helper method to check the config when a new adapter is being added.
 
         Raise a ValueError if there is something wrong with the config or if it conflicts with existing adapters.
 
         """
-        super()._check_new_adapter_config(config)
+        super()._check_new_adapter_config(config, edges=edges, insert_nodes=insert_nodes)
         if config.lora_alpha <= 0:
             raise ValueError(f"lora_alpha should be greater than 0, got {config.lora_alpha}.")
         if config.r <= 0:
             raise ValueError(f"r should be greater than 0, got {config.r}.")
-        if not isinstance(config.target_modules, (list, dict)):
+        if not isinstance(config.target_modules, (list, dict, set)):
             raise ValueError(
-                f"target_modules should be a list or a dict, got {type(config.target_modules)}."
-                "Please specify target_modules as a list of strings (target module) or a dict of strings (target module with specified (in_features, out_features))."
+                f"target_modules should be a list/set or a dict, got {type(config.target_modules)}."
+                "Please specify target_modules as a list/set of strings (target module) or a dict of strings (target module with specified (in_features, out_features))."
             )
-        if (isinstance(config.target_module, list) and not all(isinstance(target, str) for target in config.target_modules)) or \
+        if (isinstance(config.target_modules, (list, set)) and not all(isinstance(target, str) for target in config.target_modules)) or \
            (isinstance(config.target_modules, dict) and not all(isinstance(target, str) for target in config.target_modules.keys())):
             raise ValueError(
-                f"target_modules should be a list of strings (target module) or a dict of strings (target module with specified (in_features, out_features)), got {config.target_modules}."
+                f"target_modules should be a list/set of strings (target module) or a dict of strings (target module with specified (in_features, out_features)), got {config.target_modules}."
             )
         if isinstance(config.target_modules, dict) and not all(
             isinstance(features, (tuple,list)) and len(features) == 2 for features in config.target_modules.values()):
@@ -710,7 +749,7 @@ class ParallelControlModel(BaseDAGControlModel):
                         in_features=config.in_features,
                         out_features=config.out_features,
                         r=config.r,
-                        lora_alpha=config.alpha,
+                        lora_alpha=config.lora_alpha,
                         lora_dropout=config.lora_dropout,
                         init_lora_weights=config.init_weights,
                         use_rslora=config.use_rslora,
@@ -723,7 +762,7 @@ class ParallelControlModel(BaseDAGControlModel):
                             in_features=in_features,
                             out_features=out_features,
                             r=config.r,
-                            lora_alpha=config.alpha,
+                            lora_alpha=config.lora_alpha,
                             lora_dropout=config.lora_dropout,
                             init_lora_weights=config.init_weights,
                             use_rslora=config.use_rslora,
@@ -736,17 +775,17 @@ class ParallelControlv2Model(ParallelControlModel):
     def __init__(self, model, config, adapter_name, low_cpu_mem_usage: bool = False):
         """
         """
-        dag_edges = self.create_lora_edges(model, config)
-        super(ParallelControlModel, self).__init__(model, config, adapter_name, low_cpu_mem_usage, edges=dag_edges)
-    def _check_new_adapter_config(self, config: StateFTLorav2Config) -> None:
+        edges = self.create_lora_edges(model, config[adapter_name])
+        super(ParallelControlModel, self).__init__(model, config, adapter_name, low_cpu_mem_usage, edges=edges)
+    def _check_new_adapter_config(self, config: StateFTLorav2Config, edges: Dict=None, insert_nodes: Dict=None) -> None:
         """
         A helper method to check the config when a new adapter is being added.
 
         Raise a ValueError if there is something wrong with the config or if it conflicts with existing adapters.
 
         """
-        super()._check_new_adapter_config(config)
-        if (isinstance(config.target_module, list) and not all(isinstance(target, str) or (isinstance(target, tuple) and len(target)==2) for target in config.target_modules)) or \
+        super()._check_new_adapter_config(config, edges=edges, insert_nodes=insert_nodes)
+        if (isinstance(config.target_modules, (list, set)) and not all(isinstance(target, str) or (isinstance(target, tuple) and len(target)==2) for target in config.target_modules)) or \
            (isinstance(config.target_modules, dict) and not all(isinstance(target, str) or (isinstance(target, tuple) and len(target)==2) for target in config.target_modules.keys())):
             raise ValueError(
                 f"target_modules should be a list of strings (target_module) and 2-tuple (head, tail target_module) or a dict of strings and tuples (with specified (in_features, out_features)), got {config.target_modules}."
@@ -787,7 +826,7 @@ class ParallelControlv2Model(ParallelControlModel):
                                     in_features=config.in_features,
                                     out_features=config.out_features,
                                     r=config.r,
-                                    lora_alpha=config.alpha,
+                                    lora_alpha=config.lora_alpha,
                                     lora_dropout=config.lora_dropout,
                                     init_lora_weights=config.init_weights,
                                     use_rslora=config.use_rslora,
@@ -806,7 +845,7 @@ class ParallelControlv2Model(ParallelControlModel):
                                     in_features=in_features,
                                     out_features=out_features,
                                     r=config.r,
-                                    lora_alpha=config.alpha,
+                                    lora_alpha=config.lora_alpha,
                                     lora_dropout=config.lora_dropout,
                                     init_lora_weights=config.init_weights,
                                     use_rslora=config.use_rslora,
