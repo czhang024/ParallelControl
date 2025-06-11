@@ -27,6 +27,10 @@ class StateFTConfig(PeftConfig):
     This is the configuration class to store the configuration of a [`StateFTModel`].
 
     Args:
+        in_features (`int`):
+            The input features of the module to apply the adapter to. Now it cannot be determined automatically, so it should be specified manually.
+        out_features (`int`):
+            The output features of the module to apply the adapter to. Now it cannot be determined automatically, so it should be specified manually.
         target_modules (`Optional[Union[List[str], str]]`):
             The names of the modules to apply the adapter to. If this is specified, only the modules with the specified
             names will be replaced. When passing a string, a regex match will be performed. When passing a list of
@@ -48,6 +52,16 @@ class StateFTConfig(PeftConfig):
         layers_pattern (`Optional[Union[List[str], str]]`):
             The layer pattern name, used only if `layers_to_transform` is different from `None`. This should target the
             `nn.ModuleList` of the model, which is often called `'layers'` or `'h'`.
+        in_features_pattern (`dict`):
+            The mapping from layer names or regexp expression to ranks which are different from the default rank
+            specified by `in_features`. For example, `{'^model.decoder.layers.0.mlp.down_proj': 4096}`.
+        out_features_pattern (`dict`):
+            The mapping from layer names or regexp expression to alphas which are different from the default alpha
+            specified by `out_features`. For example, `{'^model.decoder.layers.0.mlp.up_proj': 4096}`.
+        modules_to_save (`Optional[List[str]]`):
+            List of modules apart from LoRA layers to be set as trainable and saved in the final checkpoint. 
+            For example, in Sequence Classification or Token Classification tasks, 
+            the final layer `classifier/score` are randomly initialized and as such need to be trainable and saved.
     """
     in_features: Optional[int] = field(
         default=None,
@@ -146,6 +160,10 @@ class StateFTLoraConfig(StateFTConfig):
     This is the configuration class to store the configuration of a [`StateFTModel`].
 
     Args:
+        in_features (`int`):
+            The input features of the module to apply the adapter to. Now it cannot be determined automatically, so it should be specified manually.
+        out_features (`int`):
+            The output features of the module to apply the adapter to. Now it cannot be determined automatically, so it should be specified manually.
         r (`int`):
             LoRA rank.
         lora_alpha (`int`):
@@ -177,12 +195,26 @@ class StateFTLoraConfig(StateFTConfig):
         layers_pattern (`Optional[Union[List[str], str]]`):
             The layer pattern name, used only if `layers_to_transform` is different from `None`. This should target the
             `nn.ModuleList` of the model, which is often called `'layers'` or `'h'`.
+        in_features_pattern (`dict`):
+            The mapping from layer names or regexp expression to ranks which are different from the default rank
+            specified by `in_features`. For example, `{'^model.decoder.layers.0.mlp.down_proj': 4096}`.
+        out_features_pattern (`dict`):
+            The mapping from layer names or regexp expression to alphas which are different from the default alpha
+            specified by `out_features`. For example, `{'^model.decoder.layers.0.mlp.up_proj': 4096}`.
         rank_pattern (`dict`):
             The mapping from layer names or regexp expression to ranks which are different from the default rank
             specified by `r`. For example, `{'^model.decoder.layers.0.encoder_attn.k_proj': 16}`.
         alpha_pattern (`dict`):
             The mapping from layer names or regexp expression to alphas which are different from the default alpha
             specified by `alpha`. For example, `{'^model.decoder.layers.0.encoder_attn.k_proj': 16}`.
+        modules_to_save (`Optional[List[str]]`):
+            List of modules apart from LoRA layers to be set as trainable and saved in the final checkpoint. 
+            For example, in Sequence Classification or Token Classification tasks, 
+            the final layer `classifier/score` are randomly initialized and as such need to be trainable and saved.
+        lora_bias (`bool`):
+            Defaults to `False`. Whether to enable the bias term for the LoRA B parameter. Typically, this should be
+            disabled. The main use case for this is when the LoRA weights were extracted from fully fine-tuned
+            parameters so the bias of those parameters can be taken into account.
     """
 
     r: int = field(default=8, metadata={"help": "LoRA rank"})
@@ -217,14 +249,6 @@ class StateFTLoraConfig(StateFTConfig):
             )
         },
     )
-    modules_to_save: Optional[list[str]] = field(
-        default=None,
-        metadata={
-            "help": "List of modules apart from LoRA layers to be set as trainable and saved in the final checkpoint. "
-            "For example, in Sequence Classification or Token Classification tasks, "
-            "the final layer `classifier/score` are randomly initialized and as such need to be trainable and saved."
-        },
-    )
     lora_bias: bool = field(
         default=False,
         metadata={
@@ -253,6 +277,10 @@ class StateFTv2Config(PeftConfig):
     This is the configuration class to store the configuration of a [`StateFTModel`].
 
     Args:
+        in_features (`int`):
+            The input features of the module to apply the adapter to. Now it cannot be determined automatically, so it should be specified manually.
+        out_features (`int`):
+            The output features of the module to apply the adapter to. Now it cannot be determined automatically, so it should be specified manually.
         target_modules (`Optional[Union[List[str], str]]`):
             The names of the modules to apply the adapter to. If this is specified, only the modules with the specified
             names will be replaced. When passing a string, a regex match will be performed. When passing a list of
@@ -263,7 +291,10 @@ class StateFTv2Config(PeftConfig):
             the target modules manually.
         init_weights (`bool` ):
             Whether to perform initialization of adapter weights. This defaults to `True`. Use default initialization of pytorch. Passing `False` is discouraged.
-        
+        modules_to_save (`Optional[List[str]]`):
+            List of modules apart from LoRA layers to be set as trainable and saved in the final checkpoint. 
+            For example, in Sequence Classification or Token Classification tasks, 
+            the final layer `classifier/score` are randomly initialized and as such need to be trainable and saved.
     """
     in_features: Optional[int] = field(
         default=None,
@@ -327,6 +358,10 @@ class StateFTLorav2Config(StateFTv2Config):
     This is the configuration class to store the configuration of a [`StateFTModel`].
 
     Args:
+        in_features (`int`):
+            The input features of the module to apply the adapter to. Now it cannot be determined automatically, so it should be specified manually.
+        out_features (`int`):
+            The output features of the module to apply the adapter to. Now it cannot be determined automatically, so it should be specified manually.
         r (`int`):
             LoRA rank.
         lora_alpha (`int`):
@@ -347,6 +382,14 @@ class StateFTLorav2Config(StateFTv2Config):
             the target modules manually.
         init_weights (`bool` ):
             Whether to perform initialization of adapter weights. This defaults to `True`. Use default initialization of pytorch. Passing `False` is discouraged.
+        modules_to_save (`Optional[List[str]]`):
+            List of modules apart from LoRA layers to be set as trainable and saved in the final checkpoint. 
+            For example, in Sequence Classification or Token Classification tasks, 
+            the final layer `classifier/score` are randomly initialized and as such need to be trainable and saved.
+        lora_bias (`bool`):
+            Defaults to `False`. Whether to enable the bias term for the LoRA B parameter. Typically, this should be
+            disabled. The main use case for this is when the LoRA weights were extracted from fully fine-tuned
+            parameters so the bias of those parameters can be taken into account.
     """
 
     r: int = field(default=8, metadata={"help": "LoRA rank"})
