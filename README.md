@@ -52,9 +52,8 @@ LoRA with Parallel Control <br>
 - Optimized for **RoBERTa** models
 - Ultra-low memory footprint training
 
-
-
----
+### 5. [`peft`](./peft/) - Custom PEFT Implementation
+ - Integrating our State-Based Fine-Tuning (StateFT) into the PEFT library
 
 ## 🚀 Quick Start Guide
 
@@ -100,7 +99,7 @@ If you use this work in your research, please cite our paper:
 
 Special thanks to:
 - 🏛️ The **ICML 2025** review committee
-- 🤗 **Hugging Face** for the Transformers library
+- 🤗 **Hugging Face** for the Transformers, Peft library
 - 🔥 **PyTorch** team for the framework
 
 ---
