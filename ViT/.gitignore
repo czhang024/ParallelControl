@@ -3,3 +3,4 @@ results/*
 .ipynb_checkpoints
 __pycache__
 result_*
+*.pyc
