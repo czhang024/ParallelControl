@@ -1,4 +1,0 @@
-epoch	training_loss	validation_loss
-0.0	3.2615	None
-0.0	2.6747	None
-0.0	None	None
