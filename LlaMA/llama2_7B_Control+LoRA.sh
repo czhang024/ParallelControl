@@ -2,7 +2,7 @@ CUDA_VISIBLE_DEVICES=$5 python finetune.py \
     --base_model 'meta-llama/Llama-2-7b-hf' \
     --data_path "/home/chi/Projects/ICML25-Submitted/LlaMA/datasets/commonsense_170k.json" \
     --output_dir $4 \
-    --batch_size 4  --micro_batch_size 4 --num_epochs 3 \
+    --batch_size 8  --micro_batch_size 4 --num_epochs 3 \
     --learning_rate 2e-4 --cutoff_len 256 --val_set_size 120 \
     --control_rank $1 --control_alpha 1.0 --double_control False \
     --eval_step 80 --save_step 80  --adapter_name "control+lora" \

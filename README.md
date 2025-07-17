@@ -1,12 +1,12 @@
 <h1 align="center">
     <p> From Weight-Based to State-Based Fine-Tuning: Further Memory Reduction on
 LoRA with Parallel Control <br> 
-    [ICML 2025 (Spotlight)] 🌟</p>
+    [ICML 2025 (Oral)] 🌟</p>
 </h1>
 
 <div align="center">
   <img src="https://img.shields.io/badge/ICML-2025-red?style=for-the-badge&logo=arxiv" alt="ICML 2025">
-  <img src="https://img.shields.io/badge/Spotlight-2.59%25-gold?style=for-the-badge" alt="Acceptance Rate">
+  <img src="https://img.shields.io/badge/Oral-0.89%25-purple?style=for-the-badge" alt="Oral Acceptance Rate">
   <img src="https://img.shields.io/badge/PyTorch-EE4C2C?style=for-the-badge&logo=pytorch&logoColor=white" alt="PyTorch">
   <img src="https://img.shields.io/badge/Memory-Efficient-green?style=for-the-badge" alt="Memory Efficient">
 </div>
@@ -14,18 +14,27 @@ LoRA with Parallel Control <br>
 <div align="center">
   <h3>🔥 The Official PyTorch Implementation 🔥</h3>
   <p><strong>📄 Paper:</strong> <a href="TBD">From Weight-Based to State-Based Fine-Tuning: Further Memory Reduction on LoRA with Parallel Control</a></p>
-  <p><strong>✨ Spotlight Paper at ICML 2025 (Acceptance Rate: 2.59%)</strong></p>
+  <p><strong>✨ Oral Paper at ICML 2025 (Rate: 0.89%)</strong></p>
 </div>
 
 ---
 
-## 🎯 What's New?
+## 🎥 Video Explanation
 
-💡 **New Understandings to PEFT**: Transform traditional weight-based fine-tuning into state-based optimization!
+For a detailed explanation of our work, check out the video presentation:
 
-💡 **Memory Reductions**: Further reduce the memory costs for large models!
+[![Video Explanation](https://img.shields.io/badge/YouTube-Video-red?logo=youtube&style=for-the-badge)](https://www.youtube.com/watch?v=spcaZxSLLVA&ab_channel=czhang024)
 
 ---
+
+## 🎯 Motivations: PEFT Beyond Weight-Tuning
+
+💡 **New Understandings to PEFT**: For a long time, the LoRA and PEFT algorithms have been regarded as methods solely for low-rank weight-tuning. Yet, we want to show that they are **more than that**. In particular, these approaches unintentionally and implicitly create a link to control theory, opening up new perspectives on their underlying mechanisms and potential.
+
+
+---
+
+
 
 ## 📁 Repository Structure
 

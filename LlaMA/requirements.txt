@@ -8,5 +8,5 @@ git+https://github.com/huggingface/transformers.git@v4.36.0
 gradio==4.9.0
 scipy==1.11.4
 sentencepiece==0.1.99
-bitsandbytes==0.44
+bitsandbytes==0.46
 protobuf
