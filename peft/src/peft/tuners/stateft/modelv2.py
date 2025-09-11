@@ -784,13 +784,26 @@ class ParallelControlv2Model(ParallelControlModel):
         Raise a ValueError if there is something wrong with the config or if it conflicts with existing adapters.
 
         """
-        super()._check_new_adapter_config(config, edges=edges, insert_nodes=insert_nodes)
+        super(ParallelControlModel, self)._check_new_adapter_config(config, edges=edges, insert_nodes=insert_nodes)
+        if config.lora_alpha <= 0:
+            raise ValueError(f"lora_alpha should be greater than 0, got {config.lora_alpha}.")
+        if config.r <= 0:
+            raise ValueError(f"r should be greater than 0, got {config.r}.")
+        if not isinstance(config.target_modules, (list, dict, set)):
+            raise ValueError(
+                f"target_modules should be a list/set or a dict, got {type(config.target_modules)}."
+                "Please specify target_modules as a list/set of strings (target module) or a dict of strings (target module with specified (in_features, out_features))."
+            )
         if (isinstance(config.target_modules, (list, set)) and not all(isinstance(target, str) or (isinstance(target, tuple) and len(target)==2) for target in config.target_modules)) or \
            (isinstance(config.target_modules, dict) and not all(isinstance(target, str) or (isinstance(target, tuple) and len(target)==2) for target in config.target_modules.keys())):
             raise ValueError(
                 f"target_modules should be a list of strings (target_module) and 2-tuple (head, tail target_module) or a dict of strings and tuples (with specified (in_features, out_features)), got {config.target_modules}."
             )
-
+        if isinstance(config.target_modules, dict) and not all(
+            isinstance(features, (tuple,list)) and len(features) == 2 for features in config.target_modules.values()):
+            raise ValueError(
+                f"the values of target_modules should be a 2-tuple (in_features, out_features), got {config.target_modules}.")
+        
     def create_lora_edges(self, model: nn.Module, config):
         """
         Create LoRA edges for the model.
