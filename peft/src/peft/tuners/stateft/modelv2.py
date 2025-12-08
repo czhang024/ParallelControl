@@ -154,7 +154,13 @@ class BaseDAGControlModel(BaseTuner):
         assert edges is not None or insert_nodes is not None, "Either edges or insert_nodes must be provided."
         submodules= dict(self.model.named_modules())
         if edges is not None:
-            for (head, tail), adapter_module in edges.items():
+            for edge_name, adapter_module in edges.items():
+                if '-TO-' in edge_name:
+                    head, tail = edge_name.split('-TO-')
+                    head = head.replace('-', '.')
+                    tail = tail.replace('-', '.')
+                else:
+                    raise ValueError(f"Edge name {edge_name} is not valid. It should be in the format 'head-TO-tail'.")
                 assert head in submodules, f"Head {head} not found in model submodules."
                 assert tail in submodules, f"Tail {tail} not found in model submodules."
                 assert isinstance(adapter_module, nn.Module), f"Submodule {adapter_module} is not a valid nn.Module."
@@ -367,7 +373,7 @@ class BaseDAGControlModel(BaseTuner):
         for edge_name, adapter_modules in self.shortcut_modules.items():
             for _adapter_name,module in adapter_modules.items():
                 if _adapter_name in adapter_names:
-                    self.register_dag_hook(self.get_edge(edge_name), module, adapter_name=_adapter_name)
+                    self.register_dag_hook(edge_name, module, adapter_name=_adapter_name)
 
         for module in self.model.modules():
             if isinstance(module, BaseDAGControlModel):
@@ -470,7 +476,7 @@ class BaseDAGControlModel(BaseTuner):
         """
         assert edge is not None or device is not None, "Either edge or device must be provided."
         if device is None:
-            base_module = self.model.get_submodule(edge[1] if isinstance(edge, tuple) else edge)
+            base_module = self.model.get_submodule(edge.split('-TO-')[1].replace('-', '.') if '-TO-' in edge else edge)
             for p in base_module.parameters():
                 device = p.device
                 break
@@ -520,21 +526,21 @@ class BaseDAGControlModel(BaseTuner):
             return '-TO-'.join([head, tail])
         else:
             return edge.replace('.', '-')
-    def get_edge(self, edge_name: str) -> Tuple[str, str]|str:
-        """
-        Get the edge from the DAG by its name.
+    # def get_edge(self, edge_name: str) -> Tuple[str, str]|str:
+    #     """
+    #     Get the edge from the DAG by its name.
 
-        Args:
-            edge_name (str): The name of the edge in the DAG.
+    #     Args:
+    #         edge_name (str): The name of the edge in the DAG.
         
-        Returns:
-            tuple|str: A tuple of (head, tail) representing the edge in the DAG or a string representing the node name.
-        """
-        if '-TO-' in edge_name:
-            head, tail = edge_name.split('-TO-')
-            return (head.replace('-', '.'), tail.replace('-', '.'))
-        else:
-            return edge_name.replace('-', '.')
+    #     Returns:
+    #         tuple|str: A tuple of (head, tail) representing the edge in the DAG or a string representing the node name.
+    #     """
+    #     if '-TO-' in edge_name:
+    #         head, tail = edge_name.split('-TO-')
+    #         return (head.replace('-', '.'), tail.replace('-', '.'))
+    #     else:
+    #         return edge_name.replace('-', '.')
 
     def build_edges(self, edges: Dict, insert_nodes: Dict = None, adapter_name: str = 'default'):
         """
@@ -657,14 +663,15 @@ class BaseDAGControlModel(BaseTuner):
         if not hasattr(self.model, 'dag_hook_handles') or not hasattr(self, 'shortcut_modules'):
             raise ValueError("Model does not have DAG hooks. Please build the edges first.")
         adapter_module.to(self.model.device)
-        if isinstance(edge, tuple):
-            head = edge[0].replace('.', '-')
-            tail = edge[1].replace('.', '-')
+        assert not isinstance(edge, tuple), "Please provide edge as a string in the format 'head-TO-tail' or node name."
+        if '-TO-' in edge:
+            head = edge.split('-TO-')[0].replace('.', '-')
+            tail = edge.split('-TO-')[1].replace('.', '-')
             edge_name = '-TO-'.join([head, tail])
             if edge_name in self.shortcut_modules and adapter_name in self.shortcut_modules[edge_name]:
                 self.model.remove_dag_hooks(edge_name=edge_name, adapter_name=adapter_name)
-            inhook = self.model.get_submodule(edge[0]).register_forward_pre_hook(self._head_hook_fn(adapter_module, tail))
-            outhook = self.model.get_submodule(edge[1]).register_forward_hook(self._tail_hook_fn(adapter_module, tail))
+            inhook = self.model.get_submodule(edge.split('-TO-')[0].replace('-', '.')).register_forward_pre_hook(self._head_hook_fn(adapter_module, tail))
+            outhook = self.model.get_submodule(edge.split('-TO-')[1].replace('-', '.')).register_forward_hook(self._tail_hook_fn(adapter_module, tail))
             if edge_name not in self.shortcut_modules:
                 self.shortcut_modules[edge_name] = nn.ModuleDict()
             self.shortcut_modules[edge_name][adapter_name] = adapter_module
@@ -745,7 +752,7 @@ class ParallelControlModel(BaseDAGControlModel):
         for current_key in submodules.keys():
             if isinstance(target_modules, list):
                 if any(current_key.endswith(target) for target in target_modules):
-                    edges[(current_key, current_key)] =  LoRAsideLayer(
+                    edges[current_key+'-TO-'+current_key] =  LoRAsideLayer(
                         in_features=config.in_features,
                         out_features=config.out_features,
                         r=config.r,
@@ -758,7 +765,7 @@ class ParallelControlModel(BaseDAGControlModel):
             elif isinstance(target_modules, dict):
                 for target, (in_features, out_features) in target_modules.items():
                     if current_key.endswith(target):
-                        edges[(current_key, current_key)] =  LoRAsideLayer(
+                        edges[current_key+'-TO-'+current_key] =  LoRAsideLayer(
                             in_features=in_features,
                             out_features=out_features,
                             r=config.r,
@@ -813,11 +820,11 @@ class ParallelControlv2Model(ParallelControlModel):
             edges (dict): 
         """
         if isinstance(config.target_modules, dict):
-            edges = {k: v for k, v in config.target_modules.items() if isinstance(k, tuple) and len(k) == 2}
-            nodes = {k: v for k, v in config.target_modules.items() if isinstance(k, str)}
+            edges = {tuple(k.split('-TO-')): v for k, v in config.target_modules.items() if '-TO-' in k}
+            nodes = {k: v for k, v in config.target_modules.items() if not '-TO-' in k}
         else:
-            edges = [k for k in config.target_modules if isinstance(k, tuple) and len(k) == 2]
-            nodes = [k for k in config.target_modules if isinstance(k, str)]
+            edges = [tuple(k.split('-TO-')) for k in config.target_modules if '-TO-' in k]
+            nodes = [k for k in config.target_modules if not '-TO-' in k]
         if len(nodes)>0:
             origin_target_modules = config.target_modules
             config.target_modules = nodes
@@ -836,8 +843,8 @@ class ParallelControlv2Model(ParallelControlModel):
                         for t in tails:
                             if h[:-len(head)] == t[:-len(tail)]:
                                 dag_edges[h+'-TO-'+t] = LoRAsideLayer(
-                                    in_features=config.in_features,
-                                    out_features=config.out_features,
+                                    in_features=in_features,
+                                    out_features=out_features,
                                     r=config.r,
                                     lora_alpha=config.lora_alpha,
                                     lora_dropout=config.lora_dropout,
