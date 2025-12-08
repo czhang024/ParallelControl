@@ -835,7 +835,7 @@ class ParallelControlv2Model(ParallelControlModel):
                     for h in heads:
                         for t in tails:
                             if h[:-len(head)] == t[:-len(tail)]:
-                                dag_edges[(h, t)] = LoRAsideLayer(
+                                dag_edges[h+'-TO-'+t] = LoRAsideLayer(
                                     in_features=config.in_features,
                                     out_features=config.out_features,
                                     r=config.r,
@@ -854,7 +854,7 @@ class ParallelControlv2Model(ParallelControlModel):
                             if h[:-len(head)] == t[:-len(tail)]:
                                 in_features = submodules[h].in_features if hasattr(submodules,'in_features') else config.in_features
                                 out_features = submodules[t].out_features if hasattr(submodules, 'out_features') else config.out_features
-                                dag_edges[(h, t)] = LoRAsideLayer(
+                                dag_edges[h+'-TO-'+t] = LoRAsideLayer(
                                     in_features=in_features,
                                     out_features=out_features,
                                     r=config.r,
