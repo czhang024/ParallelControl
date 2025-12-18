@@ -836,22 +836,42 @@ class ParallelControlv2Model(ParallelControlModel):
         if edges is not None:
             submodules = dict(model.named_modules())
             if isinstance(edges, dict):
-                for (head, tail), (in_features, out_features) in edges.items():
+                for (head, tail), v in edges.items():
                     heads = [k for k in submodules.keys() if k.endswith(head)]
                     tails = [k for k in submodules.keys() if k.endswith(tail)]
-                    for h in heads:
-                        for t in tails:
-                            if h[:-len(head)] == t[:-len(tail)]:
-                                dag_edges[h+'-TO-'+t] = LoRAsideLayer(
-                                    in_features=in_features,
-                                    out_features=out_features,
-                                    r=config.r,
-                                    lora_alpha=config.lora_alpha,
-                                    lora_dropout=config.lora_dropout,
-                                    init_lora_weights=config.init_weights,
-                                    use_rslora=config.use_rslora,
-                                    lora_bias=config.lora_bias,
-                                )
+                    if isinstance(v, (tuple,list)) and len(v) ==2:
+                        in_features, out_features = v
+                        for h in heads:
+                            for t in tails:
+                                if h[:-len(head)] == t[:-len(tail)]:
+                                    dag_edges[h+'-TO-'+t] = LoRAsideLayer(
+                                        in_features=in_features,
+                                        out_features=out_features,
+                                        r=config.r,
+                                        lora_alpha=config.lora_alpha,
+                                        lora_dropout=config.lora_dropout,
+                                        init_lora_weights=config.init_weights,
+                                        use_rslora=config.use_rslora,
+                                        lora_bias=config.lora_bias,
+                                    )
+                    elif isinstance(v, dict):
+                        for h in heads:
+                            for t in tails:
+                                if h[:-len(head)] == t[:-len(tail)]:
+                                    dag_edges[h+'-TO-'+t] = LoRAsideLayer(
+                                        in_features=v.get('in_features', submodules[h].in_features if hasattr(submodules[h],'in_features') else config.in_features),
+                                        out_features=v.get('out_features', submodules[t].out_features if hasattr(submodules[t], 'out_features') else config.out_features),
+                                        r=v.get('r', config.r),
+                                        lora_alpha=v.get('lora_alpha', config.lora_alpha),
+                                        lora_dropout=v.get('lora_dropout', config.lora_dropout),
+                                        init_lora_weights=v.get('init_lora_weights', config.init_weights),
+                                        use_rslora=v.get('use_rslora', config.use_rslora),
+                                        lora_bias=v.get('lora_bias', config.lora_bias),
+                                    )
+                    else:
+                        raise ValueError(
+                            f"The value of edges should be a 2-tuple (in_features, out_features) or a dict of configurations, got {v}."
+                        )
             elif isinstance(edges, list):
                 for head, tail in edges:
                     heads = [k for k in submodules.keys() if k.endswith(head)]
