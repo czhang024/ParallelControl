@@ -807,7 +807,7 @@ class ParallelControlv2Model(ParallelControlModel):
                 f"target_modules should be a list of strings (target_module) and 2-tuple (head, tail target_module) or a dict of strings and tuples (with specified (in_features, out_features)), got {config.target_modules}."
             )
         if isinstance(config.target_modules, dict) and not all(
-            isinstance(features, (tuple,list)) and len(features) == 2 for features in config.target_modules.values()):
+            (isinstance(features, (tuple,list)) and len(features) == 2) or (isinstance(features, dict)) for features in config.target_modules.values()):
             raise ValueError(
                 f"the values of target_modules should be a 2-tuple (in_features, out_features), got {config.target_modules}.")
         
