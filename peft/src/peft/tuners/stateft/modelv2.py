@@ -490,6 +490,7 @@ class BaseDAGControlModel(BaseTuner):
         if adapter_name not in self.shortcut_modules[edge_name]:
             raise ValueError(f"Adapter {adapter_name} not found in edge {edge}.")
         if not any(p.device == meta for p in self.shortcut_modules[edge_name][adapter_name].parameters()):
+            p=next(self.shortcut_modules[edge_name][adapter_name].parameters())
             if p.dtype.is_floating_point or p.dtype.is_complex:
                 self.shortcut_modules[edge_name][adapter_name] = self.shortcut_modules[edge_name][adapter_name].to(device, dtype=p.dtype)
             else:
