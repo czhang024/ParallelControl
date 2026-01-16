@@ -188,6 +188,17 @@ def get_peft_model_state_dict(
         to_return["base_model.vblora_vector_bank." + adapter_name] = state_dict[
             "base_model.vblora_vector_bank." + adapter_name
         ]
+    elif config.peft_type in (PeftType.STATEFT_LORA_V2, PeftType.STATEFTV2):
+        # StateFT v2 uses shortcut_modules structure
+        # Get state dict from the model's get_adapter_state_dict method if available
+        if hasattr(model, 'get_adapter_state_dict'):
+            to_return = model.get_adapter_state_dict(adapter_name)
+        elif hasattr(model, 'base_model') and hasattr(model.base_model, 'get_adapter_state_dict'):
+            to_return = model.base_model.get_adapter_state_dict(adapter_name)
+        else:
+            # Fallback to prefix-based extraction
+            prefix = PEFT_TYPE_TO_PREFIX_MAPPING.get(config.peft_type, "stateft_lora_v2_")
+            to_return = {k: state_dict[k] for k in state_dict if prefix in k or "shortcut_module" in k}
     elif config.peft_type in list(PeftType):
         prefix = PEFT_TYPE_TO_PREFIX_MAPPING[config.peft_type]
         to_return = {k: state_dict[k] for k in state_dict if prefix in k}
@@ -432,6 +443,15 @@ def set_peft_model_state_dict(
                 return k
 
             peft_model_state_dict = {renamed_dora_weights(k): v for k, v in peft_model_state_dict.items()}
+        elif config.peft_type in (PeftType.STATEFT_LORA_V2, PeftType.STATEFTV2):
+            # StateFT v2 uses set_adapter_state_dict method for loading
+            if hasattr(model, 'set_adapter_state_dict'):
+                model.set_adapter_state_dict(peft_model_state_dict, adapter_name=adapter_name)
+                # Return early since we handle loading differently
+                return type('LoadResult', (), {'missing_keys': [], 'unexpected_keys': []})()
+            elif hasattr(model, 'base_model') and hasattr(model.base_model, 'set_adapter_state_dict'):
+                model.base_model.set_adapter_state_dict(peft_model_state_dict, adapter_name=adapter_name)
+                return type('LoadResult', (), {'missing_keys': [], 'unexpected_keys': []})()
     else:
         raise NotImplementedError
 

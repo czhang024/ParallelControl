@@ -17,9 +17,21 @@ from peft.utils import register_peft_method
 from .config import  StateFTConfig, StateFTLoraConfig, StateFTv2Config, StateFTLorav2Config
 from .layer import StateFTLayer, StateFTLoraLayer
 from .model import StateFTModel, StateFTLoraModel
-from .modelv2 import BaseDAGControlModel,ParallelControlv2Model
+from .modelv2 import BaseDAGControlModel, ParallelControlModel, ParallelControlv2Model
 
-__all__ = ["StateFTConfig", "StateFTLoraConfig", "StateFTLayer", "StateFTLoraLayer", "StateFTModel", "StateFTLoraModel", "StateFTv2Config", "StateFTLorav2Config", "BaseDAGControlModel", "ParallelControlv2Model"]
+__all__ = [
+    "StateFTConfig", 
+    "StateFTLoraConfig", 
+    "StateFTLayer", 
+    "StateFTLoraLayer", 
+    "StateFTModel", 
+    "StateFTLoraModel", 
+    "StateFTv2Config", 
+    "StateFTLorav2Config", 
+    "BaseDAGControlModel", 
+    "ParallelControlModel",
+    "ParallelControlv2Model",
+]
 
 # register_peft_method(name="stateft", model_cls=StateFTModel, config_cls=StateFTConfig)
 register_peft_method(name="stateft_lora", model_cls=StateFTLoraModel, config_cls=StateFTLoraConfig)

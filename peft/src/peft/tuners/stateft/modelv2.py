@@ -13,12 +13,13 @@
 # limitations under the License.
 from __future__ import annotations
 
+import os
 import re
 import warnings
 from dataclasses import asdict
 from enum import Enum
 from itertools import chain
-from typing import Optional, Any, Dict, List, Tuple
+from typing import Optional, Any, Dict, List, Tuple, Union
 
 import torch
 import torch.nn as nn
@@ -30,7 +31,7 @@ from peft.utils import (
     ModulesToSaveWrapper,
     _get_submodules,
 )
-from peft.utils.other import get_pattern_key
+from peft.utils.other import get_pattern_key, SAFETENSORS_WEIGHTS_NAME, WEIGHTS_NAME
 
 from peft.mapping import PEFT_TYPE_TO_TUNER_MAPPING
 
@@ -53,6 +54,13 @@ import inspect
 from copy import deepcopy
 from functools import update_wrapper
 from types import MethodType
+
+try:
+    from safetensors.torch import save_file as safe_save_file
+    from safetensors.torch import load_file as safe_load_file
+    HAS_SAFETENSORS = True
+except ImportError:
+    HAS_SAFETENSORS = False
 
 
 
@@ -690,7 +698,416 @@ class BaseDAGControlModel(BaseTuner):
             self.model.dag_hook_handles[name][adapter_name]=nodehook
             if name not in self.shortcut_states:
                 self.shortcut_states[name] = []
+
+    def get_adapter_state_dict(self, adapter_name: str = "default") -> Dict[str, torch.Tensor]:
+        """
+        Get the state dict of a specific adapter.
+
+        Args:
+            adapter_name (`str`, *optional*, defaults to `"default"`):
+                The name of the adapter whose state dict should be returned.
+
+        Returns:
+            `Dict[str, torch.Tensor]`: The state dict of the adapter.
+        """
+        state_dict = {}
+        prefix = self.prefix
         
+        for edge_name, adapter_modules in self.shortcut_modules.items():
+            if adapter_name in adapter_modules:
+                module = adapter_modules[adapter_name]
+                for param_name, param in module.named_parameters():
+                    # Use the format: {prefix}{edge_name}.{adapter_name}.{param_name}
+                    key = f"{prefix}{edge_name}.{adapter_name}.{param_name}"
+                    state_dict[key] = param.data
+                for buffer_name, buffer in module.named_buffers():
+                    key = f"{prefix}{edge_name}.{adapter_name}.{buffer_name}"
+                    state_dict[key] = buffer
+        
+        return state_dict
+
+    def save_pretrained(
+        self,
+        save_directory: str,
+        safe_serialization: bool = True,
+        selected_adapters: Optional[List[str]] = None,
+        is_main_process: bool = True,
+        **kwargs: Any,
+    ) -> None:
+        r"""
+        Save the adapter model and configuration files to a directory.
+
+        Args:
+            save_directory (`str`):
+                Directory where the adapter model and configuration files will be saved.
+            safe_serialization (`bool`, *optional*, defaults to `True`):
+                Whether to save the adapter files in safetensors format.
+            selected_adapters (`List[str]`, *optional*):
+                A list of adapters to be saved. If `None`, will default to all adapters.
+            is_main_process (`bool`, *optional*, defaults to `True`):
+                Whether the process calling this is the main process or not.
+            kwargs:
+                Additional keyword arguments.
+        """
+        if os.path.isfile(save_directory):
+            raise ValueError(f"Provided path ({save_directory}) should be a directory, not a file")
+
+        if selected_adapters is None:
+            selected_adapters = list(self.peft_config.keys())
+        else:
+            if any(
+                selected_adapter_name not in list(self.peft_config.keys())
+                for selected_adapter_name in selected_adapters
+            ):
+                raise ValueError(
+                    f"You passed an invalid `selected_adapters` arguments, current supported adapter names are"
+                    f" {list(self.peft_config.keys())} - got {selected_adapters}."
+                )
+
+        if is_main_process:
+            os.makedirs(save_directory, exist_ok=True)
+
+        for adapter_name in selected_adapters:
+            peft_config = self.peft_config[adapter_name]
+            # Get the adapter state dict
+            output_state_dict = self.get_adapter_state_dict(adapter_name)
+            
+            # Remove adapter name from keys for saving
+            output_state_dict = {k.replace(f".{adapter_name}", ""): v for k, v in output_state_dict.items()}
+            
+            output_dir = os.path.join(save_directory, adapter_name) if adapter_name != "default" else save_directory
+            os.makedirs(output_dir, exist_ok=True)
+
+            if is_main_process:
+                if safe_serialization and HAS_SAFETENSORS:
+                    safe_save_file(
+                        output_state_dict,
+                        os.path.join(output_dir, SAFETENSORS_WEIGHTS_NAME),
+                        metadata={"format": "pt"},
+                    )
+                else:
+                    torch.save(output_state_dict, os.path.join(output_dir, WEIGHTS_NAME))
+
+            # Save the config
+            if peft_config.base_model_name_or_path is None:
+                peft_config.base_model_name_or_path = getattr(
+                    self.model, "name_or_path", None
+                ) or getattr(getattr(self.model, "config", None), "name_or_path", None)
+            
+            inference_mode = peft_config.inference_mode
+            peft_config.inference_mode = True
+            if is_main_process:
+                peft_config.save_pretrained(output_dir)
+            peft_config.inference_mode = inference_mode
+
+    def load_adapter(
+        self,
+        model_id: str,
+        adapter_name: str = "default",
+        is_trainable: bool = False,
+        torch_device: Optional[str] = None,
+        config: Optional[StateFTv2Config] = None,
+        **kwargs: Any,
+    ) -> None:
+        """
+        Load a pretrained adapter from a directory or the Hugging Face Hub.
+
+        This method will:
+        1. Load the adapter config if not provided
+        2. Create the adapter edges and register hooks (via build_edges) if the adapter doesn't exist
+        3. Load the adapter weights
+
+        Args:
+            model_id (`str`):
+                The identifier of the model to look for on the Hub, or a local path to the saved adapter config file
+                and target modules weights.
+            adapter_name (`str`, *optional*, defaults to `"default"`):
+                The name of the adapter to load.
+            is_trainable (`bool`, *optional*, defaults to `False`):
+                Whether the adapter should be trainable or not.
+            torch_device (`str`, *optional*):
+                The device to load the adapter on. If `None`, the device will be inferred.
+            config (`StateFTv2Config`, *optional*):
+                The configuration object to use. If not provided, will load from model_id.
+            kwargs:
+                Additional keyword arguments.
+        """
+        from huggingface_hub import hf_hub_download
+        from huggingface_hub.errors import EntryNotFoundError, LocalEntryNotFoundError
+        
+        path = (
+            os.path.join(model_id, kwargs["subfolder"])
+            if kwargs.get("subfolder", None) is not None
+            else model_id
+        )
+
+        if torch_device is None:
+            # Try to infer device from base model
+            for p in self.model.parameters():
+                torch_device = p.device
+                break
+            if torch_device is None:
+                torch_device = "cpu"
+
+        # Check if we need to create the adapter (edges + hooks)
+        adapter_exists = self._check_adapter_exists(adapter_name)
+        
+        if not adapter_exists:
+            # Load config if not provided
+            if config is None:
+                config = StateFTLorav2Config.from_pretrained(path)
+            
+            config.inference_mode = not is_trainable
+            self.peft_config[adapter_name] = config
+            
+            # Create edges based on config - this is method to be overridden by subclasses
+            edges = self._create_adapter_edges(config)
+            
+            # Build edges and register hooks
+            self._build_adapter_hooks(edges, adapter_name)
+
+        # Load weights
+        if os.path.exists(os.path.join(path, SAFETENSORS_WEIGHTS_NAME)):
+            filename = os.path.join(path, SAFETENSORS_WEIGHTS_NAME)
+            use_safetensors = True
+        elif os.path.exists(os.path.join(path, WEIGHTS_NAME)):
+            filename = os.path.join(path, WEIGHTS_NAME)
+            use_safetensors = False
+        else:
+            # Try to download from Hub
+            try:
+                filename = hf_hub_download(model_id, SAFETENSORS_WEIGHTS_NAME, **kwargs)
+                use_safetensors = True
+            except (EntryNotFoundError, LocalEntryNotFoundError):
+                try:
+                    filename = hf_hub_download(model_id, WEIGHTS_NAME, **kwargs)
+                    use_safetensors = False
+                except (EntryNotFoundError, LocalEntryNotFoundError):
+                    raise ValueError(
+                        f"Can't find weights for {model_id}. "
+                        f"Please check that the file {WEIGHTS_NAME} or {SAFETENSORS_WEIGHTS_NAME} is present."
+                    )
+
+        if use_safetensors and HAS_SAFETENSORS:
+            adapters_weights = safe_load_file(filename, device=str(torch_device))
+        else:
+            adapters_weights = torch.load(filename, map_location=torch_device, weights_only=True)
+
+        # Load the adapter weights into the model
+        self.set_adapter_state_dict(adapters_weights, adapter_name=adapter_name)
+        
+        # Set trainable status
+        if not is_trainable:
+            for edge_name, adapter_modules in self.shortcut_modules.items():
+                if adapter_name in adapter_modules:
+                    for param in adapter_modules[adapter_name].parameters():
+                        param.requires_grad = False
+        
+        # Set as active adapter
+        self.set_adapter(adapter_name)
+
+    def _check_adapter_exists(self, adapter_name: str) -> bool:
+        """
+        Check if an adapter with the given name already exists in the model.
+        
+        Args:
+            adapter_name: The name of the adapter to check.
+            
+        Returns:
+            True if the adapter exists, False otherwise.
+        """
+        if not hasattr(self, 'shortcut_modules'):
+            return False
+        
+        # Check if there are any modules for this adapter
+        for edge_name, adapter_modules in self.shortcut_modules.items():
+            if adapter_name in adapter_modules:
+                return True
+        return False
+
+    def _create_adapter_edges(self, config: StateFTv2Config) -> Dict:
+        """
+        Create adapter edges based on config. Override this in subclasses for specific edge creation logic.
+        
+        Args:
+            config: The adapter configuration.
+            
+        Returns:
+            A dictionary of edges.
+        """
+        # Base implementation - subclasses should override this
+        raise NotImplementedError(
+            f"{self.__class__.__name__} must implement _create_adapter_edges method "
+            "to create edges from config for loading adapters."
+        )
+
+    def _build_adapter_hooks(self, edges: Dict, adapter_name: str) -> None:
+        """
+        Build edges and register hooks for an adapter.
+        
+        Args:
+            edges: Dictionary of edges to build.
+            adapter_name: The name of the adapter.
+        """
+        # Initialize structures if needed
+        if not hasattr(self.model, 'dag_hook_handles'):
+            self.model.dag_hook_handles = defaultdict(dict)
+        if not hasattr(self, 'shortcut_modules'):
+            self.shortcut_modules = nn.ModuleDict()
+        if not hasattr(self, 'shortcut_states'):
+            self.shortcut_states = {}
+        
+        # Register hooks for each edge
+        for edge, submodule in edges.items():
+            self.register_dag_hook(edge, submodule, adapter_name=adapter_name)
+            self._move_adapter_to_device_of_base_layer(adapter_name, edge)
+        
+        # Mark that model has DAG hooks
+        self.model.has_dag_hooks = True
+        if not hasattr(self.model, 'remove_dag_hooks'):
+            self.model.remove_dag_hooks = MethodType(_remove_dag_hooks, self.model)
+
+    def set_adapter_state_dict(
+        self,
+        state_dict: Dict[str, torch.Tensor],
+        adapter_name: str = "default",
+    ) -> None:
+        """
+        Set the state dict of a specific adapter.
+
+        Args:
+            state_dict (`Dict[str, torch.Tensor]`):
+                The state dict to load.
+            adapter_name (`str`, *optional*, defaults to `"default"`):
+                The name of the adapter whose state dict should be set.
+        """
+        prefix = self.prefix
+        
+        # Insert adapter name into state dict keys
+        adapted_state_dict = {}
+        for key, value in state_dict.items():
+            if prefix in key:
+                # Extract the part after the prefix
+                suffix = key[len(prefix):]
+                # Find the edge_name and param_name
+                parts = suffix.split(".")
+                if len(parts) >= 2:
+                    edge_name = parts[0]
+                    param_path = ".".join(parts[1:])
+                    new_key = f"{prefix}{edge_name}.{adapter_name}.{param_path}"
+                    adapted_state_dict[new_key] = value
+            else:
+                adapted_state_dict[key] = value
+
+        # Load state dict into shortcut modules
+        missing_keys = []
+        unexpected_keys = []
+        
+        for key, value in adapted_state_dict.items():
+            if prefix not in key:
+                unexpected_keys.append(key)
+                continue
+                
+            # Parse the key
+            suffix = key[len(prefix):]
+            parts = suffix.split(".")
+            
+            if len(parts) < 3:
+                unexpected_keys.append(key)
+                continue
+                
+            edge_name = parts[0]
+            loaded_adapter_name = parts[1]
+            param_path = ".".join(parts[2:])
+            
+            if loaded_adapter_name != adapter_name:
+                continue
+                
+            if edge_name not in self.shortcut_modules:
+                missing_keys.append(key)
+                continue
+                
+            if adapter_name not in self.shortcut_modules[edge_name]:
+                missing_keys.append(key)
+                continue
+            
+            module = self.shortcut_modules[edge_name][adapter_name]
+            
+            # Navigate to the parameter
+            try:
+                param_parts = param_path.split(".")
+                target = module
+                for part in param_parts[:-1]:
+                    target = getattr(target, part)
+                
+                param_name = param_parts[-1]
+                if hasattr(target, param_name):
+                    param = getattr(target, param_name)
+                    if isinstance(param, nn.Parameter):
+                        param.data = value.to(param.device).to(param.dtype)
+                    else:
+                        setattr(target, param_name, value.to(param.device))
+                else:
+                    missing_keys.append(key)
+            except (AttributeError, IndexError):
+                missing_keys.append(key)
+        
+        if missing_keys:
+            warnings.warn(f"Missing keys when loading adapter: {missing_keys}")
+        if unexpected_keys:
+            warnings.warn(f"Unexpected keys when loading adapter: {unexpected_keys}")
+
+    @classmethod
+    def from_pretrained(
+        cls,
+        model: nn.Module,
+        model_id: str,
+        adapter_name: str = "default",
+        is_trainable: bool = False,
+        config: Optional[StateFTv2Config] = None,
+        **kwargs: Any,
+    ):
+        """
+        Instantiate a ParallelControlModel from a pretrained model and loaded adapter weights.
+
+        Args:
+            model (`torch.nn.Module`):
+                The model to be adapted.
+            model_id (`str`):
+                The identifier of the model to look for on the Hub, or a local path to the saved adapter.
+            adapter_name (`str`, *optional*, defaults to `"default"`):
+                The name of the adapter to be loaded.
+            is_trainable (`bool`, *optional*, defaults to `False`):
+                Whether the adapter should be trainable or not.
+            config (`StateFTv2Config`, *optional*):
+                The configuration object to use instead of loading from file.
+            kwargs:
+                Additional keyword arguments.
+
+        Returns:
+            `ParallelControlModel`: The model with the loaded adapter.
+        """
+        import os
+        
+        # Load config if not provided
+        if config is None:
+            path = (
+                os.path.join(model_id, kwargs.get("subfolder", ""))
+                if kwargs.get("subfolder", None) is not None
+                else model_id
+            )
+            config = StateFTLorav2Config.from_pretrained(path)
+        
+        config.inference_mode = not is_trainable
+        
+        # Create the model with the config
+        peft_model = cls(model, {adapter_name: config}, adapter_name)
+        
+        # Load the adapter weights
+        peft_model.load_adapter(model_id, adapter_name=adapter_name, is_trainable=is_trainable, **kwargs)
+        
+        return peft_model
+
 
 class ParallelControlModel(BaseDAGControlModel):
     def __init__(self, model, config, adapter_name, low_cpu_mem_usage: bool = False, edges: Dict = None):
@@ -734,6 +1151,18 @@ class ParallelControlModel(BaseDAGControlModel):
             isinstance(features, (tuple,list)) and len(features) == 2 for features in config.target_modules.values()):
             raise ValueError(
                 f"the values of target_modules should be a 2-tuple (in_features, out_features), got {config.target_modules}.")
+
+    def _create_adapter_edges(self, config: StateFTLorav2Config) -> Dict:
+        """
+        Create adapter edges based on config for loading adapters.
+        
+        Args:
+            config: The adapter configuration.
+            
+        Returns:
+            A dictionary of edges.
+        """
+        return self.create_lora_edges(self.model, config)
 
     def create_lora_edges(self, model: nn.Module, config: StateFTLorav2Config,
                           ):
