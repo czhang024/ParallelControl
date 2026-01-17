@@ -983,52 +983,67 @@ class BaseDAGControlModel(BaseTuner):
         """
         prefix = self.prefix
         
-        # Insert adapter name into state dict keys
-        adapted_state_dict = {}
-        for key, value in state_dict.items():
-            if prefix in key:
-                # Extract the part after the prefix
-                suffix = key[len(prefix):]
-                # Find the edge_name and param_name
-                parts = suffix.split(".")
-                if len(parts) >= 2:
-                    edge_name = parts[0]
-                    param_path = ".".join(parts[1:])
-                    new_key = f"{prefix}{edge_name}.{adapter_name}.{param_path}"
-                    adapted_state_dict[new_key] = value
-            else:
-                adapted_state_dict[key] = value
-
+        # Get all edge names from shortcut_modules for matching
+        known_edge_names = set(self.shortcut_modules.keys()) if hasattr(self, 'shortcut_modules') else set()
+        
         # Load state dict into shortcut modules
         missing_keys = []
         unexpected_keys = []
         
-        for key, value in adapted_state_dict.items():
-            if prefix not in key:
+        for key, value in state_dict.items():
+            if not key.startswith(prefix):
                 unexpected_keys.append(key)
                 continue
                 
-            # Parse the key
+            # Extract the part after prefix
             suffix = key[len(prefix):]
-            parts = suffix.split(".")
             
-            if len(parts) < 3:
-                unexpected_keys.append(key)
-                continue
-                
-            edge_name = parts[0]
-            loaded_adapter_name = parts[1]
-            param_path = ".".join(parts[2:])
+            # Try to find the edge_name by matching against known edge names
+            edge_name = None
+            param_path = None
             
-            if loaded_adapter_name != adapter_name:
-                continue
+            for known_edge in known_edge_names:
+                if suffix.startswith(known_edge + "."):
+                    edge_name = known_edge
+                    remaining = suffix[len(known_edge) + 1:]  # +1 for the dot
+                    # remaining could be "{param_path}" or "{adapter_name}.{param_path}"
+                    # Check if it starts with adapter_name
+                    if remaining.startswith(adapter_name + "."):
+                        # Key already has adapter_name, extract param_path
+                        param_path = remaining[len(adapter_name) + 1:]
+                    else:
+                        # Key doesn't have adapter_name, remaining is param_path
+                        param_path = remaining
+                    break
+            
+            if edge_name is None:
+                # Fallback: try to parse based on dot positions
+                # Format could be: {edge_name}.{param_path} or {edge_name}.{adapter_name}.{param_path}
+                parts = suffix.split(".")
+                if len(parts) < 2:
+                    unexpected_keys.append(key)
+                    continue
                 
+                # Assume edge_name is the first part (may not work for all cases)
+                edge_name = parts[0]
+                remaining_parts = parts[1:]
+                
+                # Check if first remaining part is the adapter_name
+                if remaining_parts[0] == adapter_name:
+                    param_path = ".".join(remaining_parts[1:])
+                else:
+                    param_path = ".".join(remaining_parts)
+            
             if edge_name not in self.shortcut_modules:
                 missing_keys.append(key)
                 continue
                 
             if adapter_name not in self.shortcut_modules[edge_name]:
                 missing_keys.append(key)
+                continue
+            
+            if not param_path:
+                unexpected_keys.append(key)
                 continue
             
             module = self.shortcut_modules[edge_name][adapter_name]
