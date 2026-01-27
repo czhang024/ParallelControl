@@ -587,39 +587,66 @@ class BaseDAGControlModel(BaseTuner):
         self.model.has_dag_hooks = True
         self.model.remove_dag_hooks = MethodType(_remove_dag_hooks, self.model)
 
-    def _head_hook_fn(self, submodule, tail):
+    def _head_hook_fn(self, submodule, edge_name, tail):
         """
         Create a forward hook function for the head of an edge.
 
+        This hook is called before the head module's forward pass.
+        It computes the adapter output and stores it for later use by the tail hook.
+        
+        Design for supporting both:
+        1. Multiple edges sharing the same tail (multiple inputs to one output)
+        2. Gradient checkpointing (forward may be called multiple times)
+        
+        Solution: Use edge_name as the storage key instead of tail.
+        - Each edge stores its state independently (no interference between edges)
+        - Direct assignment overwrites previous state (supports gradient checkpointing)
+        - Tail hook collects all states from edges ending at this tail
+
         Args:
-            submodule: The submodule to attach the hook to.
+            submodule: The adapter submodule to apply to the input.
+            edge_name: The unique identifier for this edge (head-TO-tail).
+            tail: The tail identifier (used for grouping in tail hook).
 
         Returns:
-            A function that takes the module, input, and output and applies the submodule.
+            A forward_pre_hook function.
         """
         def hook(module, input):
-            self.shortcut_states[tail].append(submodule(*input))
+            # Store state using edge_name as key (unique per edge)
+            # Direct assignment supports gradient checkpointing (overwrites on recompute)
+            adapter_output = submodule(*input)
+            self.shortcut_states[edge_name] = adapter_output
         return hook
     
-    def _tail_hook_fn(self, submodule, tail):
+    def _tail_hook_fn(self, tail):
         """
         Create a forward hook function for the tail of an edge.
 
+        This hook is called after the tail module's forward pass.
+        It collects all stored adapter outputs from edges ending at this tail
+        and adds them to the output.
+
         Args:
-            submodule: The submodule to attach the hook to.
+            tail: The tail identifier for finding all relevant edge states.
 
         Returns:
-            A function that takes the module, input, and output and applies the submodule.
+            A forward_hook function.
         """
         def hook(module, input, output):
             if isinstance(output, tuple):
                 outputx = output[0]
             else:
                 outputx = output
-            for states in self.shortcut_states[tail]:
-                assert states.shape == outputx.shape, f"Shape mismatch: {states.shape} vs {outputx.shape}, for tail {tail}"
-                outputx = states + outputx.to(states.device).to(states.dtype)
-            self.shortcut_states[tail] = []
+            
+            # Collect all states from edges ending at this tail
+            # Edge names are in format "head-TO-tail", so we look for edges ending with this tail
+            for edge_name, state in list(self.shortcut_states.items()):
+                if edge_name.endswith('-TO-' + tail) and state is not None:
+                    assert state.shape == outputx.shape, f"Shape mismatch: {state.shape} vs {outputx.shape}, for edge {edge_name}"
+                    outputx = state + outputx.to(state.device).to(state.dtype)
+                    # Clear the state after use (important for next forward pass)
+                    self.shortcut_states[edge_name] = None
+            
             if isinstance(output, tuple):
                 output = (outputx,) + output[1:]
             else:
@@ -679,14 +706,17 @@ class BaseDAGControlModel(BaseTuner):
             edge_name = '-TO-'.join([head, tail])
             if edge_name in self.shortcut_modules and adapter_name in self.shortcut_modules[edge_name]:
                 self.model.remove_dag_hooks(edge_name=edge_name, adapter_name=adapter_name)
-            inhook = self.model.get_submodule(edge.split('-TO-')[0].replace('-', '.')).register_forward_pre_hook(self._head_hook_fn(adapter_module, tail))
-            outhook = self.model.get_submodule(edge.split('-TO-')[1].replace('-', '.')).register_forward_hook(self._tail_hook_fn(adapter_module, tail))
+            # Pass edge_name and tail to head hook; only tail to tail hook
+            inhook = self.model.get_submodule(edge.split('-TO-')[0].replace('-', '.')).register_forward_pre_hook(
+                self._head_hook_fn(adapter_module, edge_name, tail))
+            outhook = self.model.get_submodule(edge.split('-TO-')[1].replace('-', '.')).register_forward_hook(
+                self._tail_hook_fn(tail))
             if edge_name not in self.shortcut_modules:
                 self.shortcut_modules[edge_name] = nn.ModuleDict()
             self.shortcut_modules[edge_name][adapter_name] = adapter_module
             self.model.dag_hook_handles[edge_name][adapter_name] = (inhook,outhook)
-            if tail not in self.shortcut_states:
-                self.shortcut_states[tail] = []
+            # Initialize state storage for this edge (using edge_name as key)
+            self.shortcut_states[edge_name] = None
         else:
             nodehook=self.model.get_submodule(edge).register_forward_hook(self._insert_node_hook_fn(adapter_module))
             name = edge.replace('.', '-')
@@ -697,7 +727,7 @@ class BaseDAGControlModel(BaseTuner):
             self.shortcut_modules[name].append(adapter_module)
             self.model.dag_hook_handles[name][adapter_name]=nodehook
             if name not in self.shortcut_states:
-                self.shortcut_states[name] = []
+                self.shortcut_states[name] = None
 
     def get_adapter_state_dict(self, adapter_name: str = "default") -> Dict[str, torch.Tensor]:
         """
