@@ -1,2 +1,5 @@
 **/__pycache__
 **/peft.egg-info
+**/output
+**/wandb
+**/results
