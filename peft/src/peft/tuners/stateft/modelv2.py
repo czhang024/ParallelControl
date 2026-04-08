@@ -102,21 +102,21 @@ def _remove_dag_hooks(model, edge_name=None, adapter_name: str = None):
     else:
         for edge_name, handles in model.dag_hook_handles.items():
             if adapter_name is None:
-                for handle in handles:
+                for _aname, handle in handles.items():
                     if isinstance(handle, (tuple, list)):
-                        for handle in handles:
-                            handle.remove()
+                        for h in handle:
+                            h.remove()
                     else:
                         handle.remove()
             elif adapter_name in handles:
                 handles = handles.pop(adapter_name)
                 if handles is None:
                     continue
-                if isinstance(handles[adapter_name], (tuple, list)):
-                    for handle in handles[adapter_name]:
+                if isinstance(handles, (tuple, list)):
+                    for handle in handles:
                         handle.remove()
                 else:
-                    handles[adapter_name].remove()
+                    handles.remove()
         if adapter_name is None:
             model.dag_hook_handles = defaultdict(dict)
         model.has_dag_hooks = False if adapter_name is None or len(model.dag_hook_handles) == 0 else True
