@@ -39,7 +39,7 @@ class FourierFTModel(BaseTuner):
     """
     Creates FourierFT model from a pretrained transformers model.
 
-    The method is described in detail in https://arxiv.org/abs/2405.03003.
+    The method is described in detail in https://huggingface.co/papers/2405.03003.
 
     Args:
         model ([`torch.nn.Module`]): The model to be adapted.
@@ -57,9 +57,6 @@ class FourierFTModel(BaseTuner):
     """
 
     prefix: str = "fourierft_"
-
-    def __init__(self, model, config, adapter_name, low_cpu_mem_usage: bool = False) -> None:
-        super().__init__(model, config, adapter_name, low_cpu_mem_usage=low_cpu_mem_usage)
 
     def _check_new_adapter_config(self, config: FourierFTConfig) -> None:
         """
@@ -243,7 +240,7 @@ class FourierFTModel(BaseTuner):
             if val != "none":
                 msg = (
                     f"Careful, disabling adapter layers with bias configured to be '{val}' does not produce the same "
-                    "output as the the base model would without adaption."
+                    "output as the base model would without adaption."
                 )
                 warnings.warn(msg)
         self._set_adapter_layers(enabled=False)
@@ -319,6 +316,7 @@ class FourierFTModel(BaseTuner):
                     new_adapter = target.active_adapter[:]
 
         self.active_adapter = new_adapter or []
+        self._delete_auxiliary_adapter(adapter_name, new_active_adapters=new_adapter)
 
     def merge_and_unload(
         self, progressbar: bool = False, safe_merge: bool = False, adapter_names: Optional[list[str]] = None

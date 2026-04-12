@@ -40,9 +40,10 @@ class PeftType(str, enum.Enum):
     - FOURIERFT
     - HRA
     - BONE
-    - STATEFT
-    - STATEFT_LORA
-    - STATEFT_LORA_V2
+    - MISS
+    - RANDLORA
+    - SHIRA
+    - C3A
     """
 
     PROMPT_TUNING = "PROMPT_TUNING"
@@ -66,11 +67,16 @@ class PeftType(str, enum.Enum):
     VBLORA = "VBLORA"
     CPT = "CPT"
     BONE = "BONE"
+    MISS = "MISS"
+    RANDLORA = "RANDLORA"
     TRAINABLE_TOKENS = "TRAINABLE_TOKENS"
+    SHIRA = "SHIRA"
+    C3A = "C3A"
     STATEFT = "STATEFT"
     STATEFTV2 = "STATEFTV2"
     STATEFT_LORA = "STATEFT_LORA"
     STATEFT_LORA_V2 = "STATEFT_LORA_V2"
+
 
 class TaskType(str, enum.Enum):
     """

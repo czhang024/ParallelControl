@@ -52,7 +52,8 @@ from .config import LoraConfig
 from .eetq import dispatch_eetq
 from .gptq import dispatch_gptq
 from .hqq import dispatch_hqq
-from .layer import Conv2d, LoraLayer, dispatch_default
+from .inc import dispatch_inc
+from .layer import Conv2d, LoraLayer, ParamWrapper, dispatch_default
 from .torchao import dispatch_torchao
 from .tp_layer import dispatch_megatron
 
@@ -67,7 +68,7 @@ class LoraModel(BaseTuner):
     """
     Creates Low Rank Adapter (LoRA) model from a pretrained transformers model.
 
-    The method is described in detail in https://arxiv.org/abs/2106.09685.
+    The method is described in detail in https://huggingface.co/papers/2106.09685.
 
     Args:
         model ([`torch.nn.Module`]): The model to be adapted.
@@ -138,9 +139,6 @@ class LoraModel(BaseTuner):
 
     prefix: str = "lora_"
 
-    def __init__(self, model, config, adapter_name, low_cpu_mem_usage: bool = False) -> None:
-        super().__init__(model, config, adapter_name, low_cpu_mem_usage=low_cpu_mem_usage)
-
     def _check_new_adapter_config(self, config: LoraConfig) -> None:
         """
         A helper method to check the config when a new adapter is being added.
@@ -181,7 +179,9 @@ class LoraModel(BaseTuner):
         target_name,
         parent,
         current_key,
-    ):
+        *,
+        parameter_name: Optional[str] = None,
+    ) -> None:
         if current_key is None:
             raise ValueError("Current Key shouldn't be `None`")
 
@@ -199,10 +199,13 @@ class LoraModel(BaseTuner):
             "init_lora_weights": lora_config.init_lora_weights,
             "use_rslora": lora_config.use_rslora,
             "use_dora": lora_config.use_dora,
+            "use_qalora": lora_config.use_qalora,
+            "qalora_group_size": lora_config.qalora_group_size,
             "ephemeral_gpu_offload": lora_config.runtime_config.ephemeral_gpu_offload,
             "lora_bias": lora_config.lora_bias,
             "loaded_in_8bit": getattr(self.model, "is_loaded_in_8bit", False),
             "loaded_in_4bit": getattr(self.model, "is_loaded_in_4bit", False),
+            "parameter_name": parameter_name,
         }
         # for torchao merging, we need the get_apply_tensor_subclass from the quantization config
         try:
@@ -221,7 +224,9 @@ class LoraModel(BaseTuner):
         # note: AdaLoraLayer is a subclass of LoraLayer, we need to exclude it
         from peft.tuners.adalora import AdaLoraLayer
 
-        if isinstance(target, LoraLayer) and not isinstance(target, AdaLoraLayer):
+        # if the target is a ParamWrapper, we nest it to allow targeting multiple nn.Parameter on the same module
+        wrap_target_param = isinstance(target, ParamWrapper) and (adapter_name in target.lora_A)
+        if isinstance(target, LoraLayer) and not isinstance(target, AdaLoraLayer) and not wrap_target_param:
             target.update_layer(
                 adapter_name,
                 r,
@@ -233,6 +238,11 @@ class LoraModel(BaseTuner):
                 lora_bias=lora_config.lora_bias,
             )
         else:
+            if isinstance(target, ParamWrapper) and (parameter_name == target.parameter_name):
+                raise ValueError(
+                    "Trying to target the same nn.Parameter twice, this should not happen. Please open an issue on the "
+                    "PEFT repo: https://github.com/huggingface/peft/issues"
+                )
             device_map = self.model.hf_device_map if hasattr(self.model, "hf_device_map") else None
             new_module = self._create_new_module(lora_config, adapter_name, target, device_map=device_map, **kwargs)
             if adapter_name not in self.active_adapters:
@@ -331,6 +341,7 @@ class LoraModel(BaseTuner):
                 dispatch_awq,
                 dispatch_gptq,
                 dispatch_hqq,
+                dispatch_inc,
                 dispatch_torchao,
                 dispatch_megatron,
                 dispatch_default,
@@ -393,7 +404,7 @@ class LoraModel(BaseTuner):
             if val != "none":
                 msg = (
                     f"Careful, disabling adapter layers with bias configured to be '{val}' does not produce the same "
-                    "output as the the base model would without adaption."
+                    "output as the base model would without adaption."
                 )
                 warnings.warn(msg)
         self._set_adapter_layers(enabled=False)
@@ -495,11 +506,12 @@ class LoraModel(BaseTuner):
     @staticmethod
     def _prepare_adapter_config(peft_config, model_config):
         if peft_config.target_modules is None:
-            if model_config["model_type"] not in TRANSFORMERS_MODELS_TO_LORA_TARGET_MODULES_MAPPING:
-                raise ValueError("Please specify `target_modules` in `peft_config`")
-            peft_config.target_modules = set(
-                TRANSFORMERS_MODELS_TO_LORA_TARGET_MODULES_MAPPING[model_config["model_type"]]
-            )
+            if model_config["model_type"] in TRANSFORMERS_MODELS_TO_LORA_TARGET_MODULES_MAPPING:
+                peft_config.target_modules = set(
+                    TRANSFORMERS_MODELS_TO_LORA_TARGET_MODULES_MAPPING[model_config["model_type"]]
+                )
+            elif not peft_config.target_parameters:
+                raise ValueError("Please specify `target_modules` or `target_parameters`in `peft_config`")
         return peft_config
 
     def _unload_and_optionally_merge(
@@ -544,6 +556,12 @@ class LoraModel(BaseTuner):
             if adapter not in list(self.peft_config.keys()):
                 raise ValueError(f"Adapter {adapter} does not exist")
 
+        for adapter in adapters:
+            if self.peft_config[adapter].target_parameters:
+                raise ValueError(
+                    f"add_weighted_adapter does not support targeting nn.Parameter (problematic adapter '{adapter}')"
+                )
+
         # If more than one of the adapters targets the same module with modules_to_save, raise an error, as these
         # modules cannot be merged. First, find the ModulesToSaveWrapper instances in the model, then check if they
         # have modules for the adapters to be merged.
@@ -562,7 +580,12 @@ class LoraModel(BaseTuner):
         # if there is only one adapter, we can only use linear merging
         combination_type = "linear" if len(adapters) == 1 else combination_type
 
-        adapters_ranks = [self.peft_config[adapter].r for adapter in adapters]
+        adapters_ranks: list[int] = [
+            # When allocating tensors for the new adapter, we need the maximum possible rank to not overflow
+            config.r if not config.rank_pattern else max(config.r, *config.rank_pattern.values())
+            for config in (self.peft_config[adapter] for adapter in adapters)
+        ]
+
         if combination_type in ("linear", "ties", "dare_ties", "dare_linear", "magnitude_prune"):
             # all adapters ranks should be same, new rank is just this value
             if len(set(adapters_ranks)) != 1:
@@ -668,6 +691,8 @@ class LoraModel(BaseTuner):
             r=new_rank,
             lora_alpha=new_rank,
             target_modules=new_target_modules,
+            alpha_pattern={},
+            rank_pattern={},
         )
         self.inject_adapter(self.model, adapter_name)
 
@@ -868,6 +893,7 @@ class LoraModel(BaseTuner):
                     new_adapter = target.active_adapters[:]
 
         self.active_adapter = new_adapter or []
+        self._delete_auxiliary_adapter(adapter_name, new_active_adapters=new_adapter)
 
     def merge_and_unload(
         self, progressbar: bool = False, safe_merge: bool = False, adapter_names: Optional[list[str]] = None
