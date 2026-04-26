@@ -219,7 +219,7 @@ class BaseDAGControlModel(BaseTuner):
             child = child.base_layer
     
     def inject_adapter(
-        self, model: nn.Module, adapter_name: str, autocast_adapter_dtype: bool = True, low_cpu_mem_usage: bool = False
+        self, model: nn.Module, adapter_name: str, autocast_adapter_dtype: bool = True, low_cpu_mem_usage: bool = False, **kwargs
     ) -> None:
         peft_config = self.peft_config[adapter_name]
         edges = self._edges
