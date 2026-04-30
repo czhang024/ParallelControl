@@ -77,6 +77,8 @@ class LycorisLayer(BaseTunerLayer):
         # Tuner info
         self._disable_adapters = False
         self.merged_adapters = []
+        # flag to enable/disable casting of input to weight dtype during forward call
+        self.cast_input_dtype_enabled = True
 
     @property
     @abstractmethod
@@ -200,9 +202,6 @@ class LycorisTuner(BaseTuner):
 
     prefix: str
     layers_mapping: dict[type[torch.nn.Module], type[LycorisLayer]]
-
-    def __init__(self, model, config, adapter_name, low_cpu_mem_usage: bool = False):
-        super().__init__(model, config, adapter_name, low_cpu_mem_usage=low_cpu_mem_usage)
 
     def __getattr__(self, name: str):
         """Forward missing attributes to the wrapped module."""
@@ -434,3 +433,4 @@ class LycorisTuner(BaseTuner):
                     new_adapter = target.active_adapters[:]
 
         self.active_adapter = new_adapter or []
+        self._delete_auxiliary_adapter(adapter_name, new_active_adapters=new_adapter)

@@ -16,6 +16,7 @@ from .adalora import AdaLoraConfig, AdaLoraModel
 from .adaption_prompt import AdaptionPromptConfig, AdaptionPromptModel
 from .boft import BOFTConfig, BOFTModel
 from .bone import BoneConfig, BoneModel
+from .c3a import C3AConfig, C3AModel
 from .cpt import CPTConfig, CPTEmbedding
 from .fourierft import FourierFTConfig, FourierFTModel
 from .hra import HRAConfig, HRAModel
@@ -32,6 +33,7 @@ from .lora import (
     get_eva_state_dict,
     initialize_lora_eva_weights,
 )
+from .miss import MissConfig, MissModel
 from .mixed import MixedModel
 from .multitask_prompt_tuning import MultitaskPromptEmbedding, MultitaskPromptTuningConfig, MultitaskPromptTuningInit
 from .oft import OFTConfig, OFTModel
@@ -39,11 +41,14 @@ from .p_tuning import PromptEncoder, PromptEncoderConfig, PromptEncoderReparamet
 from .poly import PolyConfig, PolyModel
 from .prefix_tuning import PrefixEncoder, PrefixTuningConfig
 from .prompt_tuning import PromptEmbedding, PromptTuningConfig, PromptTuningInit
+from .randlora import RandLoraConfig, RandLoraModel
+from .shira import ShiraConfig, ShiraModel
+from .stateft import StateFTConfig, StateFTModel, StateFTLoraConfig, StateFTLoraModel, StateFTLorav2Config, ParallelControlv2Model
 from .trainable_tokens import TrainableTokensConfig, TrainableTokensModel
 from .vblora import VBLoRAConfig, VBLoRAModel
 from .vera import VeraConfig, VeraModel
 from .xlora import XLoraConfig, XLoraModel
-from .stateft import StateFTConfig, StateFTModel, StateFTLoraConfig, StateFTLoraModel, StateFTLorav2Config, ParallelControlv2Model
+
 
 __all__ = [
     "AdaLoraConfig",
@@ -54,6 +59,8 @@ __all__ = [
     "BOFTModel",
     "BoneConfig",
     "BoneModel",
+    "C3AConfig",
+    "C3AModel",
     "CPTConfig",
     "CPTEmbedding",
     "EvaConfig",
@@ -73,6 +80,8 @@ __all__ = [
     "LoraConfig",
     "LoraModel",
     "LoraRuntimeConfig",
+    "MissConfig",
+    "MissModel",
     "MixedModel",
     "MultitaskPromptEmbedding",
     "MultitaskPromptTuningConfig",
@@ -89,6 +98,10 @@ __all__ = [
     "PromptEncoderReparameterizationType",
     "PromptTuningConfig",
     "PromptTuningInit",
+    "RandLoraConfig",
+    "RandLoraModel",
+    "ShiraConfig",
+    "ShiraModel",
     "StateFTConfig",
     "StateFTModel",
     "StateFTLoraConfig",

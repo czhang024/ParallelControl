@@ -574,6 +574,7 @@ class BaseDAGControlModel(BaseTuner):
             self.shortcut_modules = nn.ModuleDict()
         if not hasattr(self, 'shortcut_states'):
             self.shortcut_states = {}
+        self._init_dag_selfheal_state()
         if edges is not None:
             for edge, submodule in edges.items():
                 self.register_dag_hook(edge, submodule, adapter_name=adapter_name)
@@ -586,6 +587,8 @@ class BaseDAGControlModel(BaseTuner):
         # self.shortcut_modules=nn.ModuleDict({k: v for k,v in self.shortcut_modules.items()})
         self.model.has_dag_hooks = True
         self.model.remove_dag_hooks = MethodType(_remove_dag_hooks, self.model)
+
+        self._install_root_dag_hooks()
 
     def _head_hook_fn(self, submodule, edge_name, tail):
         """
@@ -616,6 +619,13 @@ class BaseDAGControlModel(BaseTuner):
             # Direct assignment supports gradient checkpointing (overwrites on recompute)
             adapter_output = submodule(*input)
             self.shortcut_states[edge_name] = adapter_output
+            # Self-heal bookkeeping: record the order in which this edge's
+            # head pre-hook fires within the current forward (used after the
+            # first forward to detect edges where head is naturally called
+            # AFTER tail in the host model — see _selfheal_inverted_edges).
+            if not self._dag_first_step_done:
+                self._dag_call_counter += 1
+                self._dag_head_fired_at[edge_name] = self._dag_call_counter
         return hook
     
     def _tail_hook_fn(self, tail):
@@ -637,16 +647,25 @@ class BaseDAGControlModel(BaseTuner):
                 outputx = output[0]
             else:
                 outputx = output
-            
+
             # Collect all states from edges ending at this tail
             # Edge names are in format "head-TO-tail", so we look for edges ending with this tail
+            suffix = '-TO-' + tail
             for edge_name, state in list(self.shortcut_states.items()):
-                if edge_name.endswith('-TO-' + tail) and state is not None:
-                    assert state.shape == outputx.shape, f"Shape mismatch: {state.shape} vs {outputx.shape}, for edge {edge_name}"
-                    outputx = state + outputx.to(state.device).to(state.dtype)
-                    # Clear the state after use (important for next forward pass)
-                    self.shortcut_states[edge_name] = None
-            
+                if not edge_name.endswith(suffix):
+                    continue
+                # Self-heal bookkeeping: record tail call order for every edge
+                # ending here, regardless of whether head has fired yet.
+                if not self._dag_first_step_done:
+                    self._dag_call_counter += 1
+                    self._dag_tail_fired_at[edge_name] = self._dag_call_counter
+                if state is None:
+                    continue
+                assert state.shape == outputx.shape, f"Shape mismatch: {state.shape} vs {outputx.shape}, for edge {edge_name}"
+                outputx = state + outputx.to(state.device).to(state.dtype)
+                # Clear the state after use (important for next forward pass)
+                self.shortcut_states[edge_name] = None
+
             if isinstance(output, tuple):
                 output = (outputx,) + output[1:]
             else:
@@ -687,6 +706,146 @@ class BaseDAGControlModel(BaseTuner):
         if hasattr(self, 'shortcut_modules'):
             del self.shortcut_modules
 
+    # ------------------------------------------------------------------
+    # Self-heal: redirect inverted edges to LCA on first forward
+    # ------------------------------------------------------------------
+    def _init_dag_selfheal_state(self):
+        """Initialise per-instance state used for first-step ordering detection
+        and one-shot LCA self-heal of `inverted` edges (edges whose head
+        module is naturally called after its tail in the host model)."""
+        if not hasattr(self, '_dag_edge_info'):
+            self._dag_edge_info = {}
+        if not hasattr(self, '_dag_head_fired_at'):
+            self._dag_head_fired_at = {}
+        if not hasattr(self, '_dag_tail_fired_at'):
+            self._dag_tail_fired_at = {}
+        if not hasattr(self, '_dag_call_counter'):
+            self._dag_call_counter = 0
+        if not hasattr(self, '_dag_first_step_done'):
+            self._dag_first_step_done = False
+
+    def _install_root_dag_hooks(self):
+        """Register root-level pre/post hooks exactly once per host model:
+        - pre-hook  : clear shortcut_states + reset per-step ordering counters
+        - post-hook : after the FIRST forward, run LCA self-heal for any
+                      edge whose head fired after its tail (or never fired
+                      relative to its tail)."""
+        if getattr(self.model, '_dag_state_clear_hook_registered', False):
+            return
+
+        def _pre(module, input):
+            for k in list(self.shortcut_states.keys()):
+                self.shortcut_states[k] = None
+            if not self._dag_first_step_done:
+                self._dag_call_counter = 0
+                self._dag_head_fired_at.clear()
+                self._dag_tail_fired_at.clear()
+
+        def _post(module, input, output):
+            if self._dag_first_step_done:
+                return output
+            try:
+                self._selfheal_inverted_edges()
+            finally:
+                self._dag_first_step_done = True
+            return output
+
+        self.model.register_forward_pre_hook(_pre)
+        self.model.register_forward_hook(_post)
+        self.model._dag_state_clear_hook_registered = True
+
+    @staticmethod
+    def _lca_path(path_a: str, path_b: str) -> str:
+        """Return the dotted path of the lowest common ancestor of two
+        named submodules. '' means the root model itself."""
+        a = path_a.split('.')
+        b = path_b.split('.')
+        common = []
+        for x, y in zip(a, b):
+            if x == y:
+                common.append(x)
+            else:
+                break
+        return '.'.join(common)
+
+    def _selfheal_inverted_edges(self):
+        """Detect edges whose head pre-hook fires after the tail post-hook
+        in the host model's natural call order, and redirect their pre-hook
+        from the head module to the lowest common ancestor (LCA) of head
+        and tail. Sibling Linear modules (e.g. ViT Q/K/V projections) share
+        the same input tensor as their parent, so reading the parent's
+        input is equivalent to reading the head's input -- and removes any
+        call-order dependency."""
+        inverted = []
+        for edge_name, info in self._dag_edge_info.items():
+            head_at = self._dag_head_fired_at.get(edge_name)
+            tail_at = self._dag_tail_fired_at.get(edge_name)
+            if tail_at is None:
+                # Tail never ran -> this edge never contributes anyway, skip.
+                continue
+            if head_at is None or head_at > tail_at:
+                inverted.append(edge_name)
+
+        if not inverted:
+            return
+
+        for edge_name in inverted:
+            info = self._dag_edge_info[edge_name]
+            adapter = info['adapter']
+            adapter_name = info['adapter_name']
+            tail_basename = info['tail_basename']
+            lca_path = self._lca_path(info['head_path'], info['tail_path'])
+            try:
+                lca_module = self.model.get_submodule(lca_path) if lca_path else self.model
+            except AttributeError:
+                print(f"[stateft self-heal] WARNING: could not resolve LCA "
+                      f"'{lca_path}' for edge {edge_name}; this edge will "
+                      f"contribute zero (head fires after tail).")
+                continue
+            adapter_in = getattr(adapter, 'in_features', None)
+            # We cannot easily know the LCA input shape without an
+            # observation step. Defer the dim check to the first call of
+            # the new hook; if mismatched, raise an actionable error.
+            handles = self.model.dag_hook_handles[edge_name][adapter_name]
+            old_inhook = handles[0] if isinstance(handles, tuple) else handles[0]
+            try:
+                old_inhook.remove()
+            except Exception:
+                pass
+
+            def _make_lca_pre_hook(adapter_module, edge_name, tail, expected_in):
+                state = {'checked': False}
+                def hook(module, input):
+                    if not input:
+                        return
+                    x = input[0]
+                    if not state['checked']:
+                        state['checked'] = True
+                        last_dim = x.shape[-1] if hasattr(x, 'shape') else None
+                        if expected_in is not None and last_dim is not None and last_dim != expected_in:
+                            raise RuntimeError(
+                                f"[stateft self-heal] LCA redirect failed "
+                                f"for edge '{edge_name}': LCA module input "
+                                f"last-dim={last_dim} but adapter expects "
+                                f"in_features={expected_in}. The head and "
+                                f"tail of this edge do not share their "
+                                f"input via a common ancestor; this edge "
+                                f"cannot be implemented under StateFT "
+                                f"semantics in the current host model. "
+                                f"Remove it from the precomputed cache."
+                            )
+                    adapter_output = adapter_module(x)
+                    self.shortcut_states[edge_name] = adapter_output
+                return hook
+
+            new_inhook = lca_module.register_forward_pre_hook(
+                _make_lca_pre_hook(adapter, edge_name, tail_basename, adapter_in)
+            )
+            outhook = handles[1] if isinstance(handles, tuple) else None
+            self.model.dag_hook_handles[edge_name][adapter_name] = (new_inhook, outhook)
+            print(f"[stateft self-heal] redirected '{edge_name}' "
+                  f"head pre-hook -> LCA '{lca_path or '<root>'}'")
+
     def register_dag_hook(self, edge, adapter_module: nn.Module, adapter_name: str = 'default'):
         """
         Register a new DAG hook.
@@ -706,15 +865,56 @@ class BaseDAGControlModel(BaseTuner):
             edge_name = '-TO-'.join([head, tail])
             if edge_name in self.shortcut_modules and adapter_name in self.shortcut_modules[edge_name]:
                 self.model.remove_dag_hooks(edge_name=edge_name, adapter_name=adapter_name)
-            # Pass edge_name and tail to head hook; only tail to tail hook
-            inhook = self.model.get_submodule(edge.split('-TO-')[0].replace('-', '.')).register_forward_pre_hook(
+
+            head_path = edge.split('-TO-')[0].replace('-', '.')
+            tail_path = edge.split('-TO-')[1].replace('-', '.')
+            head_module = self.model.get_submodule(head_path)
+            tail_module = self.model.get_submodule(tail_path)
+
+            # StateFT semantics: an edge `head-TO-tail` adds `adapter(head_input)`
+            # to `tail_output`. The adapter must therefore see HEAD's input,
+            # produce a tensor matching TAIL's output. Enforce this strictly so
+            # that a mismatched precompute cache fails loudly here rather than
+            # producing a confusing F.linear error deep in autograd.
+            adapter_in = getattr(adapter_module, 'in_features', None)
+            adapter_out = getattr(adapter_module, 'out_features', None)
+            head_in = getattr(head_module, 'in_features', None)
+            tail_out = getattr(tail_module, 'out_features', None)
+            if adapter_in is not None and head_in is not None and adapter_in != head_in:
+                raise RuntimeError(
+                    f"StateFT edge '{edge}': adapter.in_features={adapter_in} "
+                    f"!= head.in_features={head_in}. StateFT requires the "
+                    f"adapter to consume the head module's input. Fix the "
+                    f"precomputed cache so this edge's `in_features` equals "
+                    f"the head Linear's `in_features`."
+                )
+            if adapter_out is not None and tail_out is not None and adapter_out != tail_out:
+                raise RuntimeError(
+                    f"StateFT edge '{edge}': adapter.out_features={adapter_out} "
+                    f"!= tail.out_features={tail_out}. StateFT requires the "
+                    f"adapter output to be added to the tail module's output. "
+                    f"Fix the precomputed cache so this edge's `out_features` "
+                    f"equals the tail Linear's `out_features`."
+                )
+
+            inhook = head_module.register_forward_pre_hook(
                 self._head_hook_fn(adapter_module, edge_name, tail))
-            outhook = self.model.get_submodule(edge.split('-TO-')[1].replace('-', '.')).register_forward_hook(
+            outhook = tail_module.register_forward_hook(
                 self._tail_hook_fn(tail))
             if edge_name not in self.shortcut_modules:
                 self.shortcut_modules[edge_name] = nn.ModuleDict()
             self.shortcut_modules[edge_name][adapter_name] = adapter_module
             self.model.dag_hook_handles[edge_name][adapter_name] = (inhook,outhook)
+            # Record paths and adapter for the self-heal pass that can later
+            # redirect the head pre-hook to a higher ancestor module if the
+            # natural host call order is head-after-tail.
+            self._dag_edge_info[edge_name] = {
+                'head_path': head_path,
+                'tail_path': tail_path,
+                'tail_basename': tail,
+                'adapter': adapter_module,
+                'adapter_name': adapter_name,
+            }
             # Initialize state storage for this edge (using edge_name as key)
             self.shortcut_states[edge_name] = None
         else:
@@ -986,6 +1186,7 @@ class BaseDAGControlModel(BaseTuner):
             self.shortcut_modules = nn.ModuleDict()
         if not hasattr(self, 'shortcut_states'):
             self.shortcut_states = {}
+        self._init_dag_selfheal_state()
         
         # Register hooks for each edge
         for edge, submodule in edges.items():
@@ -996,6 +1197,8 @@ class BaseDAGControlModel(BaseTuner):
         self.model.has_dag_hooks = True
         if not hasattr(self.model, 'remove_dag_hooks'):
             self.model.remove_dag_hooks = MethodType(_remove_dag_hooks, self.model)
+
+        self._install_root_dag_hooks()
 
     def set_adapter_state_dict(
         self,

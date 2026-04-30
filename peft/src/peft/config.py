@@ -16,10 +16,10 @@ import json
 import os
 import warnings
 from dataclasses import asdict, dataclass, field
-from typing import Dict, Optional, Union
+from typing import Optional, Union
 
 from huggingface_hub import hf_hub_download
-from transformers.utils import PushToHubMixin
+from transformers.utils import PushToHubMixin, http_user_agent
 
 from .utils import CONFIG_NAME, PeftType, TaskType
 
@@ -68,7 +68,7 @@ class PeftConfigMixin(PushToHubMixin):
                 f"Invalid task type: '{self.task_type}'. Must be one of the following task types: {', '.join(TaskType)}."
             )
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         r"""
         Returns the configuration for your adapter model as a dictionary.
         """
@@ -190,6 +190,8 @@ class PeftConfigMixin(PushToHubMixin):
         )
 
         hf_hub_download_kwargs, class_kwargs, _ = cls._split_kwargs(kwargs)
+        if "user_agent" not in hf_hub_download_kwargs:
+            hf_hub_download_kwargs["user_agent"] = http_user_agent()
 
         if os.path.isfile(os.path.join(path, CONFIG_NAME)):
             config_file = os.path.join(path, CONFIG_NAME)
@@ -333,6 +335,15 @@ class PromptLearningConfig(PeftConfig):
     )
     num_attention_heads: Optional[int] = field(default=None, metadata={"help": "Number of attention heads"})
     num_layers: Optional[int] = field(default=None, metadata={"help": "Number of transformer layers"})
+    modules_to_save: Optional[list[str]] = field(
+        default=None,
+        metadata={
+            "help": "List of extra modules to be set as trainable and saved in the final checkpoint. "
+            "For example, in Sequence Classification or Token Classification tasks, "
+            "the final layer `classifier/score` are randomly initialized and as such need to be trainable and saved. "
+            "The module(s) will be fully fine-tuned."
+        },
+    )
 
     @property
     def is_prompt_learning(self) -> bool:

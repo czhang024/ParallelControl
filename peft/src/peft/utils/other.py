@@ -14,21 +14,26 @@
 from __future__ import annotations
 
 import copy
+import functools
 import inspect
 import os
 import re
 import warnings
+from collections.abc import Sequence
 from contextlib import nullcontext
-from typing import Any, Optional, Sequence, Union
+from typing import Any, Optional, Union
 
 import accelerate
 import torch
+import transformers
+from accelerate import FullyShardedDataParallelPlugin
 from accelerate.hooks import add_hook_to_module, remove_hook_from_module
 from accelerate.utils import is_npu_available, is_xpu_available
 from huggingface_hub import file_exists
 from huggingface_hub.errors import EntryNotFoundError, HFValidationError
 from packaging import version
 from safetensors.torch import storage_ptr, storage_size
+from transformers import PreTrainedModel
 
 from ..import_utils import is_auto_gptq_available, is_gptqmodel_available, is_torch_tpu_available
 from .constants import (
@@ -37,12 +42,17 @@ from .constants import (
     INCLUDE_LINEAR_LAYERS_SHORTHAND,
     SAFETENSORS_WEIGHTS_NAME,
     TRANSFORMERS_MODELS_TO_ADALORA_TARGET_MODULES_MAPPING,
+    TRANSFORMERS_MODELS_TO_C3A_TARGET_MODULES_MAPPING,
     TRANSFORMERS_MODELS_TO_FOURIERFT_TARGET_MODULES_MAPPING,
     TRANSFORMERS_MODELS_TO_IA3_FEEDFORWARD_MODULES_MAPPING,
     TRANSFORMERS_MODELS_TO_IA3_TARGET_MODULES_MAPPING,
     TRANSFORMERS_MODELS_TO_LNTUNING_TARGET_MODULES_MAPPING,
+    TRANSFORMERS_MODELS_TO_LOHA_TARGET_MODULES_MAPPING,
+    TRANSFORMERS_MODELS_TO_LOKR_TARGET_MODULES_MAPPING,
     TRANSFORMERS_MODELS_TO_LORA_TARGET_MODULES_MAPPING,
     TRANSFORMERS_MODELS_TO_PREFIX_TUNING_POSTPROCESS_MAPPING,
+    TRANSFORMERS_MODELS_TO_RANDLORA_TARGET_MODULES_MAPPING,
+    TRANSFORMERS_MODELS_TO_SHIRA_TARGET_MODULES_MAPPING,
     TRANSFORMERS_MODELS_TO_VBLORA_TARGET_MODULES_MAPPING,
     TRANSFORMERS_MODELS_TO_VERA_TARGET_MODULES_MAPPING,
     WEIGHTS_NAME,
@@ -64,12 +74,17 @@ __all__ = [
     "INCLUDE_LINEAR_LAYERS_SHORTHAND",
     "SAFETENSORS_WEIGHTS_NAME",
     "TRANSFORMERS_MODELS_TO_ADALORA_TARGET_MODULES_MAPPING",
+    "TRANSFORMERS_MODELS_TO_C3A_TARGET_MODULES_MAPPING",
     "TRANSFORMERS_MODELS_TO_FOURIERFT_TARGET_MODULES_MAPPING",
     "TRANSFORMERS_MODELS_TO_IA3_FEEDFORWARD_MODULES_MAPPING",
     "TRANSFORMERS_MODELS_TO_IA3_TARGET_MODULES_MAPPING",
     "TRANSFORMERS_MODELS_TO_LNTUNING_TARGET_MODULES_MAPPING",
+    "TRANSFORMERS_MODELS_TO_LOHA_TARGET_MODULES_MAPPING",
+    "TRANSFORMERS_MODELS_TO_LOKR_TARGET_MODULES_MAPPING",
     "TRANSFORMERS_MODELS_TO_LORA_TARGET_MODULES_MAPPING",
     "TRANSFORMERS_MODELS_TO_PREFIX_TUNING_POSTPROCESS_MAPPING",
+    "TRANSFORMERS_MODELS_TO_RANDLORA_TARGET_MODULES_MAPPING",
+    "TRANSFORMERS_MODELS_TO_SHIRA_TARGET_MODULES_MAPPING",
     "TRANSFORMERS_MODELS_TO_VBLORA_TARGET_MODULES_MAPPING",
     "TRANSFORMERS_MODELS_TO_VERA_TARGET_MODULES_MAPPING",
     "WEIGHTS_NAME",
@@ -348,10 +363,8 @@ class AuxiliaryTrainingWrapper(torch.nn.Module):
     ) -> torch.Tensor:
         raise NotImplementedError
 
-    def _forward_disabled(self, x: torch.Tensor, *args: Any, **kwargs: Any) -> torch.Tensor:
-        """The forward call when all 'adapters' are disabled. For example this could entail
-        restoring (unmerging) a base model and returning its forward return values.
-        """
+    def _forward_wrapped_passthrough(self, x: torch.Tensor, *args: Any, **kwargs: Any) -> torch.Tensor:
+        """The forward call when no adapter is involved in the forward computation, only the base model"""
         raise NotImplementedError
 
     def _mixed_batch_forward(
@@ -393,7 +406,7 @@ class AuxiliaryTrainingWrapper(torch.nn.Module):
         adapter_names = kwargs.pop("adapter_names", None)
 
         if self.disable_adapters or any(adapter not in self._adapters for adapter in self.active_adapters):
-            return self._forward_wrapped_disabled(x, *args, **kwargs)
+            return self._forward_wrapped_passthrough(x, *args, **kwargs)
 
         if adapter_names is None:
             return self._forward_wrapped(x, *args, **kwargs)
@@ -425,6 +438,10 @@ class AuxiliaryTrainingWrapper(torch.nn.Module):
                     raise ValueError(f"Adapter {adapter_name} not found in {self._adapters}")
 
                 self._active_adapter.append(adapter_name)
+
+    def delete_adapter(self, adapter_name: str, new_active_adapters: Optional[list[str]]) -> None:
+        """Delete an adapter from the layer, set a new active adapter if necessary"""
+        raise NotImplementedError
 
     def adapter_state_dict(self, adapter_name):
         """Return the state dict of this module for a given adapter."""
@@ -462,12 +479,14 @@ class ModulesToSaveWrapper(AuxiliaryTrainingWrapper):
         return "modules_to_save"
 
     def _forward_wrapped(self, x, *args, **kwargs):
+        if not self.active_adapters:
+            return self._forward_wrapped_passthrough(x, *args, **kwargs)
         return self.modules_to_save[self.active_adapters[0]](x, *args, **kwargs)
 
     def _forward_wrapped_mixed_batch(self, x, active_adapter, *args, **kwargs):
         return self.modules_to_save[active_adapter](x, *args, **kwargs)
 
-    def _forward_wrapped_disabled(self, x, *args, **kwargs):
+    def _forward_wrapped_passthrough(self, x, *args, **kwargs):
         return self.original_module(x, *args, **kwargs)
 
     def _hasattr_wrapped(self, name, modules):
@@ -549,6 +568,45 @@ class ModulesToSaveWrapper(AuxiliaryTrainingWrapper):
         self.modules_to_save[self.active_adapters[0]].requires_grad_(False)
         self.modules_to_save[adapter_name].requires_grad_(True)
         self._active_adapter = adapter_name
+
+    def delete_adapter(self, adapter_name: str, new_active_adapters: Optional[list[str]]) -> None:
+        """
+        Delete the adapter if present.
+
+        This method will also set a new active adapter if the deleted adapter was the active adapter. It is important
+        that the new adapter is chosen by the caller in a deterministic way, so that the same adapter is chosen on all
+        layers.
+        """
+        if adapter_name not in self.modules_to_save:
+            return
+
+        # set new active adapter, if necessary
+        # note: there can only ever be one active adapter, unlike for LoRA etc.
+        if isinstance(new_active_adapters, (list, tuple)) and len(new_active_adapters) > 1:
+            name = self.__class__.__name__
+            raise ValueError(
+                f"Attempted to set multiple ({new_active_adapters}) adapters at once for {name}, which is not allowed."
+            )
+
+        if adapter_name in self._adapters:
+            self._adapters.remove(adapter_name)
+
+        if not new_active_adapters:
+            # no active adapter now
+            del self.modules_to_save[adapter_name]
+            self._active_adapter = []
+            return
+
+        new_active_adapter = new_active_adapters[0]
+        if new_active_adapter not in self.modules_to_save:
+            # a new active adapter was chosen but it seems like it has no modules_to_save
+            del self.modules_to_save[adapter_name]
+            self._active_adapter = []
+            return
+
+        if new_active_adapter != self.active_adapters[0]:
+            self.set_adapter(new_active_adapter)
+        del self.modules_to_save[adapter_name]
 
     def adapter_state_dict_load_map(self, adapter_name):
         # Maps the module keys as they are in the saved state dict to the in-memory state dict.
@@ -643,14 +701,16 @@ class TrainableTokensWrapper(AuxiliaryTrainingWrapper):
         )
 
     def _forward_wrapped(self, x, *args, **kwargs):
+        if not self.active_adapters:
+            return self._forward_wrapped_passthrough(x, *args, **kwargs)
         return self.token_adapter(x)
 
     def _forward_wrapped_mixed_batch(self, x, active_adapter, *args, **kwargs):
         return self.token_adapter.forward_adapters(x, [active_adapter])
 
-    def _forward_wrapped_disabled(self, x, *args, **kwargs):
-        # we already disabled the adapter so we can safely forward call to the adapter
-        # since it will know best what to do when being disabled.
+    def _forward_wrapped_passthrough(self, x, *args, **kwargs):
+        # the token adapter knows how to deal with disabled adapter / no active adapter, don't call original_module
+        # directly
         return self.token_adapter(x, *args, **kwargs)
 
     def update(self, active_adapter, **kwargs):
@@ -688,6 +748,39 @@ class TrainableTokensWrapper(AuxiliaryTrainingWrapper):
     def set_adapter(self, adapter_names: Union[str, list[str]]):
         super().set_adapter(adapter_names)
         self.token_adapter.set_adapter(adapter_names)
+
+    def delete_adapter(self, adapter_name: str, new_active_adapters: Optional[list[str]]) -> None:
+        """
+        Delete the adapter if present.
+
+        This method will also set a new active adapter if the deleted adapter was the active adapter. It is important
+        that the new adapter is chosen by the caller in a deterministic way, so that the same adapter is chosen on all
+        layers.
+        """
+        self.token_adapter.delete_adapter(adapter_name)
+
+        # set new active adapter, if necessary
+        # note: there can only ever be one active adapter, unlike for LoRA etc.
+        if isinstance(new_active_adapters, (list, tuple)) and len(new_active_adapters) > 1:
+            name = self.__class__.__name__
+            raise ValueError(
+                f"Attempted to set multiple ({new_active_adapters}) adapters at once for {name}, which is not allowed."
+            )
+
+        if adapter_name in self._adapters:
+            self._adapters.remove(adapter_name)
+
+        if not new_active_adapters:
+            self._active_adapter = []
+            return
+
+        if new_active_adapters[0] not in self.token_adapter.trainable_tokens_delta:
+            # a new active adapter was chosen but it seems like it has no trainable_tokens
+            self._active_adapter = []
+            return
+
+        new_active_adapter = new_active_adapters[0]
+        self.set_adapter(new_active_adapter)
 
     def unload_and_optionally_merge_module(
         self, merge: bool, safe_merge: bool, adapter_names: Optional[list[str]]
@@ -749,7 +842,9 @@ def _set_trainable(
     if wrapper_cls is None:
         wrapper_cls = ModulesToSaveWrapper
 
-    if module_names is None:
+    if not module_names:
+        # This is useful for the case that the PEFT config does not have `modules_to_save`, e.g.
+        # in the case of prompt tuning and friends.
         return
 
     trainable_modules = []
@@ -808,6 +903,10 @@ def _set_adapter(model, adapter_name):
 
 
 def _prepare_prompt_learning_config(peft_config, model_config):
+    # In case of VLM we focus on the language model portion of the model.
+    if "text_config" in model_config:
+        model_config = model_config["text_config"]
+
     if peft_config.num_layers is None:
         if "num_hidden_layers" in model_config:
             num_layers = model_config["num_hidden_layers"]
@@ -855,12 +954,33 @@ def _prepare_prompt_learning_config(peft_config, model_config):
     return peft_config
 
 
+def _get_no_split_modules(model) -> set[str]:
+    """
+    Get the modules of the model that should not be split when using device_map. We iterate through the modules to get
+    the underlying `_no_split_modules`.
+
+    Returns:
+        `List[str]`: List of modules that should not be split
+    """
+    # After discussion in https://github.com/huggingface/transformers/pull/38141, based on:
+    # https://github.com/huggingface/transformers/blob/1e921a3a9cea92b383ca4b0484ee45596bbdadc3/src/transformers/modeling_utils.py#L2677-L2704
+    _no_split_modules: set[str] = set()
+    if not hasattr(model, "_no_split_modules"):
+        return _no_split_modules
+
+    modules_to_check = [model]
+    while len(modules_to_check) > 0:
+        module = modules_to_check.pop(-1)
+        # if the module does not appear in _no_split_modules, we also check the children
+        if module.__class__.__name__ not in _no_split_modules:
+            if isinstance(module, PreTrainedModel):
+                if module._no_split_modules is not None:
+                    _no_split_modules = _no_split_modules | set(module._no_split_modules)
+            modules_to_check += list(module.children())
+    return _no_split_modules
+
+
 def fsdp_auto_wrap_policy(model):
-    import functools
-    import os
-
-    from accelerate import FullyShardedDataParallelPlugin
-
     if hasattr(FullyShardedDataParallelPlugin, "get_module_class_from_name"):
         get_module_class_from_name = FullyShardedDataParallelPlugin.get_module_class_from_name
     else:
@@ -869,9 +989,7 @@ def fsdp_auto_wrap_policy(model):
 
     from ..tuners import PrefixEncoder, PromptEmbedding, PromptEncoder
 
-    default_transformer_cls_names_to_wrap = (
-        ",".join(model._no_split_modules) if getattr(model, "_no_split_modules", None) is not None else ""
-    )
+    default_transformer_cls_names_to_wrap = ",".join(_get_no_split_modules(model))
     transformer_cls_names_to_wrap = os.environ.get(
         "FSDP_TRANSFORMER_CLS_TO_WRAP", default_transformer_cls_names_to_wrap
     ).split(",")
@@ -1115,6 +1233,14 @@ def check_file_exists_on_hf_hub(repo_id: str, filename: str, **kwargs) -> Option
     return exists
 
 
+def match_target_against_key(target_pattern: str, key: str):
+    """Backing function for `target_modules` config parameter.
+
+    Having this as its own function ensures that target key matching can be implemented in the same way everywhere.
+    """
+    return re.fullmatch(target_pattern, key)
+
+
 def get_pattern_key(pattern_keys: Sequence[str], key_to_match: str) -> str:
     """Match a substring of key_to_match in pattern keys"""
     for key in pattern_keys:
@@ -1124,3 +1250,117 @@ def get_pattern_key(pattern_keys: Sequence[str], key_to_match: str) -> str:
         return key
 
     return key_to_match
+
+
+def set_additional_trainable_modules(model, peft_config, model_config, adapter_name):
+    """Handle the resolution of additional trainable modules (also called AuxiliaryTrainingWrapper)
+    by checking the config if such modules are requested and adding them to the model.
+
+    Currently trainable tokens and modules to save are considered additional trainable modules.
+    """
+    if getattr(peft_config, "modules_to_save", None) is not None:
+        # this may add a new ModulesToSaveWrapper
+        _set_trainable(model, adapter_name, module_names=getattr(peft_config, "modules_to_save", None))
+
+    if getattr(peft_config, "trainable_token_indices", None) is not None:
+        if isinstance(peft_config.trainable_token_indices, dict):
+            target_layers = peft_config.trainable_token_indices
+        else:
+            layer_name = _get_input_embeddings_name(model, "embed_tokens")
+            target_layers = {layer_name: peft_config.trainable_token_indices}
+
+        modules_to_save = getattr(peft_config, "modules_to_save", None)
+        if modules_to_save is not None:
+            for target_layer in target_layers:
+                if target_layer in modules_to_save:
+                    raise ValueError(
+                        "The embedding layer is already marked to be trained fully, either specify "
+                        f'`modules_to_save=[..., "{target_layer}", ...]` or '
+                        f"`trainable_tokens={{'{target_layer}': x}}` but not both."
+                    )
+
+        for target_layer, token_indices in target_layers.items():
+            _set_trainable(
+                model,
+                adapter_name,
+                module_names=[target_layer],
+                strict_module_check=True,
+                wrapper_cls=TrainableTokensWrapper,
+                token_indices=token_indices,
+            )
+
+        # There might be the possibility that we have output weights that are tied to the input weights.
+        # In that case we will tie any module that wants tied weights to the token adapter to make sure that
+        # any modification is reflected in the tied layers as well.
+        if (
+            model_config.get("tie_word_embeddings", False)
+            # some models may be misconfigured to have weight tying enabled but don't define tied weights keys
+            and model._tied_weights_keys is not None
+            and isinstance(model.get_input_embeddings(), TrainableTokensWrapper)
+        ):
+            # the embedding layer is modified and we want weight tying.
+            module_keys = [".".join(n.split(".")[:-1]) for n in model._tied_weights_keys]
+
+            token_adapter = model.get_input_embeddings().token_adapter
+            _set_trainable(
+                model,
+                adapter_name,
+                module_names=module_keys,
+                strict_module_check=True,
+                wrapper_cls=TrainableTokensWrapper,
+                token_indices=token_adapter.token_indices[adapter_name],
+                tied_adapter=model.get_input_embeddings().token_adapter,
+            )
+
+
+def create_attention_mask(
+    model, *, model_input, attention_mask, past_key_values, cache_position, batch_size, sequence_length, position_ids
+):
+    # adapted from:
+    # https://github.com/huggingface/transformers/blob/cb4c56ce0dfa1350267ed28e57760986a58a9ba4/src/transformers/generation/utils.py#L644-L680
+    # In PEFT, we sometimes need to re-create the attention mask. This is because some prompt learning methods insert
+    # new items into the sequence, which results in the attention mask needing an update. We re-use transformers code
+    # for this as much as possible.
+    transformers_ge_4_53_1 = version.parse(transformers.__version__) >= version.parse("4.53.1")
+    if transformers_ge_4_53_1:
+        # the function already exists in v4.53.0 but has a different signature, so we check for 4.53.1
+        from transformers.masking_utils import create_masks_for_generate
+    else:
+        raise ImportError("Your transformers version is too old, please upgrade it to >= 4.53.1")
+
+    # Create the causal mask with fixed shape in advance, to reduce recompilations. If the function to create
+    # the 4D causal mask exists, it should be present in the base model (XXXModel class) or in its decoder.
+    base_model = getattr(model, model.base_model_prefix, model)
+    decoder = base_model.get_decoder() if hasattr(base_model, "get_decoder") else None
+    causal_mask_creation_function = getattr(base_model, "_prepare_4d_causal_attention_mask_with_cache_position", None)
+    if causal_mask_creation_function is None and decoder is not None:  # it may be in the decoder
+        causal_mask_creation_function = getattr(decoder, "_prepare_4d_causal_attention_mask_with_cache_position", None)
+
+    # If it's not defined, it means the model uses the new general mask API
+    if causal_mask_creation_function is None:  # can't be found
+        token_type_ids = getattr(model_input, "token_type_ids", None)
+        # Some models may overwrite the general one
+        causal_mask_creation_function = getattr(model, "create_masks_for_generate", create_masks_for_generate)
+        attention_mask = causal_mask_creation_function(
+            config=model.config,
+            # we only need batch size, seq_length and dtype here - we don't care about the values of the embeddings
+            input_embeds=torch.empty((batch_size, sequence_length), dtype=model.dtype),
+            attention_mask=attention_mask,
+            cache_position=cache_position,
+            past_key_values=past_key_values,
+            token_type_ids=token_type_ids,
+            position_ids=position_ids,
+        )
+    else:
+        attention_mask = causal_mask_creation_function(
+            attention_mask,
+            sequence_length=sequence_length,
+            target_length=past_key_values.get_max_cache_shape(),
+            dtype=model.dtype,
+            cache_position=cache_position,
+            batch_size=batch_size,
+            config=model.config,
+            past_key_values=past_key_values,
+            position_ids=position_ids,
+        )
+    return attention_mask
