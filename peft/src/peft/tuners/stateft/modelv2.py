@@ -31,7 +31,7 @@ from peft.utils import (
     ModulesToSaveWrapper,
     _get_submodules,
 )
-from peft.utils.other import get_pattern_key, SAFETENSORS_WEIGHTS_NAME, WEIGHTS_NAME
+from peft.utils.other import get_pattern_key, SAFETENSORS_WEIGHTS_NAME, WEIGHTS_NAME, set_additional_trainable_modules
 
 from peft.mapping import PEFT_TYPE_TO_TUNER_MAPPING
 
@@ -314,6 +314,17 @@ class BaseDAGControlModel(BaseTuner):
                 model.modules_to_save = set(peft_config.modules_to_save)
             else:
                 model.modules_to_save.update(set(peft_config.modules_to_save))
+
+        # Re-enable requires_grad on the modules_to_save adapter copy.
+        # `_mark_only_adapters_as_trainable` above unconditionally freezes everything
+        # except `shortcut_module`, so the ModulesToSaveWrapper head copy needs to be
+        # re-enabled here (mirrors BaseTuner.inject_adapter behaviour).
+        set_additional_trainable_modules(
+            model=model,
+            peft_config=peft_config,
+            model_config=BaseTuner.get_model_config(self),
+            adapter_name=adapter_name,
+        )
 
     def _mark_only_adapters_as_trainable(self, model: torch.nn.Module) -> None:
         for n, p in model.named_parameters():
